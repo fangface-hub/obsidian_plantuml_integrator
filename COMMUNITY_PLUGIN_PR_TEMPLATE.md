@@ -5,7 +5,7 @@
 ## Repo URL
 
 <!-- Paste a link to your repo here for easy access -->
-Link to my plugin: [obsidian_plantuml_Integrator](https://github.com/fangface-hub/obsidian_plantuml_Integrator)
+Link to my plugin: [obsidian_plantuml_integrator](https://github.com/fangface-hub/obsidian_plantuml_integrator)
 
 ## Release Checklist
 
