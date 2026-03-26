@@ -2,8 +2,6 @@ name: Build and Package Release
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: write
@@ -54,11 +52,29 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.zip_name }}
-          path: ${{ steps.meta.outputs.zip_name }}
+          name: ${{ steps.meta.outputs.id }}-${{ steps.meta.outputs.version }}
+          path: dist/
 
-      - name: Upload zip to GitHub Release
-        if: github.event_name == 'release'
+      - name: Create version tag if missing
+        shell: bash
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          if git ls-remote --tags origin "refs/tags/${VERSION}" | grep -q "refs/tags/${VERSION}$"; then
+            echo "Tag ${VERSION} already exists."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "${VERSION}"
+            git push origin "${VERSION}"
+          fi
+
+      - name: Create or update GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.meta.outputs.zip_name }}
+          tag_name: ${{ steps.meta.outputs.version }}
+          files: |
+            ${{ steps.meta.outputs.zip_name }}
+            manifest.json
+            main.js
+            styles.css
+          fail_on_unmatched_files: true

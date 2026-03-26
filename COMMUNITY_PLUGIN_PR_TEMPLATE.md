@@ -1,59 +1,28 @@
-# Obsidian Community Plugin Registration PR Template
+# I am submitting a new Community Plugin
 
-Use the following text when submitting the plugin to the Obsidian community plugin list repository.
+- [ ] I attest that I have done my best to deliver a high-quality plugin, am proud of the code I have written, and would recommend it to others. I commit to maintaining the plugin and being responsive to bug reports. If I am no longer able to maintain it, I will make reasonable efforts to find a successor maintainer or withdraw the plugin from the directory.
 
-## PR Title
+## Repo URL
 
-Add PlantUML Integrator community plugin
+<!-- Paste a link to your repo here for easy access -->
+Link to my plugin: [obsidian_plantuml_Integrator](https://github.com/fangface-hub/obsidian_plantuml_Integrator)
 
-## PR Body
+## Release Checklist
 
-### Summary
-
-This PR adds a new community plugin: PlantUML Integrator.
-
-PlantUML Integrator renders PlantUML diagrams in Obsidian from both Markdown code blocks and embedded `.puml` files. It also tracks `!include` dependencies, caches the include tree, and automatically re-renders diagrams when dependent files are updated.
-
-### Repository
-
-- Repository: <REPOSITORY_URL>
-- Latest release: <RELEASE_URL>
-
-### Main Features
-
-- Render `plantuml` and `puml` code blocks in Markdown preview
-- Render embedded `.puml` files
-- Cache `!include` dependency trees
-- Automatically re-render diagrams when included files change
-- Allow users to clear the cache for an individual diagram via right-click
-- Support both server-based rendering and local JAR-based rendering
-
-### Notes for Review
-
-- The plugin does not use remote code execution.
-- Server-based rendering is optional and user-configurable.
-- Local rendering is supported through a user-specified PlantUML JAR.
-- The plugin package includes the standard release files required by Obsidian plugins.
-
-### Testing
-
-The plugin has been tested with:
-
-- PlantUML code blocks in Markdown notes
-- Embedded `.puml` files
-- Changes to files referenced through `!include`
-- Manual cache clearing for a single rendered diagram
-- Both server rendering mode and local JAR rendering mode
-
-### Checklist
-
-- [ ] I have read the community plugin submission guidelines
-- [ ] The repository is public
-- [ ] A GitHub release is available
-- [ ] The release contains `manifest.json`, `main.js`, and `styles.css`
-- [ ] `versions.json` is included and up to date
-- [ ] The plugin has a valid open-source license
-
-### Additional Information
-
-If needed, I can provide more implementation details or test notes.
+- [ ] I have tested the plugin on
+  - [ ] Windows
+  - [ ] macOS
+  - [ ] Linux
+  - [ ] Android _(if applicable)_
+  - [ ] iOS _(if applicable)_
+- [ ] My GitHub release contains all required files (as individual files, not just in the source.zip/source.tar.gz)
+  - [ ] `main.js`
+  - [ ] `manifest.json`
+  - [ ] `styles.css` _(optional)_
+- [ ] GitHub release name matches the exact version number specified in my `manifest.json` (_**Note:** Use the exact version number, do not include a `v` prefix_)
+- [ ] The `id` in my `manifest.json` matches the `id` in the `community-plugins.json` file
+- [ ] My `README.md` describes the plugin's purpose and provides clear usage instructions
+- [ ] I have read the developer policies at [Developer policies](https://docs.obsidian.md/Developer+policies) and have assessed my plugin's adherence to these policies
+- [ ] I have read the tips in [Plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines) and have self-reviewed my plugin to avoid these common pitfalls
+- [ ] I have added a license in the `LICENSE` file
+- [ ] My project respects and is compatible with the original license of any code from other plugins that I am using. I have given proper attribution to these other projects in my `README.md`
