@@ -1,0 +1,19 @@
+.plantuml-integrator-container {
+  margin: 0.75rem 0;
+  padding: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  overflow-x: auto;
+}
+
+.plantuml-integrator-container svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.plantuml-integrator-error {
+  color: var(--text-error);
+  white-space: pre-wrap;
+}
