@@ -219,3 +219,9 @@ Copy `manifest.json`, `main.js`, and `styles.css` to your Obsidian vault plugin 
 2. Add the new version mapping in `versions.json`
 3. `npm run build`
 4. Create a git tag and GitHub Release
+
+## Support the Project
+
+If you find this plugin helpful, consider sponsoring the project:
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ff69b4?style=for-the-badge)](https://github.com/sponsors/fangface)
