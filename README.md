@@ -8,19 +8,63 @@ An Obsidian plugin that renders PlantUML diagrams and is ready for Community Plu
 - Render `.puml` embedded files.
 - Cache include dependency trees and auto re-render when included files are modified.
 - Right-click each rendered diagram to clear cache and re-render only that diagram.
-- Select rendering mode: server endpoint or local PlantUML JAR.
+- Select rendering mode: remote server endpoint or local PlantUML server.
+
+## Render Modes
+
+### Server mode (default)
+
+Uses a remote PlantUML-compatible HTTP endpoint (e.g. [kroki.io](https://kroki.io)).
+Configure **PlantUML server URL** in settings (default: `https://kroki.io/plantuml/svg`).
+
+### Local jar mode
+
+Runs a local [PlantUML](https://plantuml.com/download) PicoWeb server and sends requests to it.
+This mode does **not** invoke `java` directly from the plugin; you must start the server yourself.
+
+**Why?** Due to platform security constraints, Obsidian plugins cannot spawn external processes. Instead, the plugin communicates with a running PlantUML server via HTTP.
+
+**Starting the local server:**
+
+```sh
+java -jar "<path-to-plantuml.jar>" -picoweb
+```
+
+The server listens on port 8080 by default.
+
+**Plugin settings for local jar mode:**
+
+| Setting | Description | Default |
+| --- | --- | --- |
+| Local PlantUML server URL | Base URL of the running PicoWeb server | `http://127.0.0.1:8080/svg` |
+| Local PlantUML JAR path | Path to `plantuml.jar` — used only to build the start command hint | *(empty)* |
+| Java command | Java executable name or full path | `java` |
+
+**Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `java -jar ...` command to the clipboard.
+
+If the server is not running, the plugin shows the start command in the error message.
 
 ## Build
 
 1. Install dependencies:
+
+   ```sh
    npm install
+   ```
+
 2. Build:
+
+   ```sh
    npm run build
+   ```
 
 ## Development
 
-- Watch mode:
-  npm run dev
+Watch mode:
+
+```sh
+npm run dev
+```
 
 Copy `manifest.json`, `main.js`, and `styles.css` to your Obsidian vault plugin folder.
 

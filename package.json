@@ -1,6 +1,6 @@
 {
   "name": "obsidian-plantuml-integrator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Obsidian plugin to render PlantUML from code blocks and .puml files",
   "main": "main.js",
   "scripts": {
@@ -15,9 +15,11 @@
   "author": "nakam",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.15.29",
     "esbuild": "^0.25.5",
     "obsidian": "^1.8.9",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "plantuml-encoder": "^1.4.0"
   }
 }

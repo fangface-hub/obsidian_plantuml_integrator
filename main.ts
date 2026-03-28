@@ -1,22 +1,24 @@
 import {
-    App,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Menu,
-    Notice,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TAbstractFile,
-    TFile,
-    requestUrl
+  App,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+  Menu,
+  Notice,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+  TAbstractFile,
+  TFile,
+  requestUrl
 } from "obsidian";
+import * as plantumlEncoder from "plantuml-encoder";
 
 type RenderMode = "server" | "localJar";
 
 interface PlantumlIntegratorSettings {
   renderMode: RenderMode;
   serverUrl: string;
+  localServerUrl: string;
   localJarPath: string;
   javaCommand: string;
   timeoutMs: number;
@@ -25,6 +27,7 @@ interface PlantumlIntegratorSettings {
 const DEFAULT_SETTINGS: PlantumlIntegratorSettings = {
   renderMode: "server",
   serverUrl: "https://kroki.io/plantuml/svg",
+  localServerUrl: "http://127.0.0.1:8080/svg",
   localJarPath: "",
   javaCommand: "java",
   timeoutMs: 10000
@@ -113,7 +116,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       } catch (error) {
         container.createDiv({
           cls: "plantuml-integrator-error",
-          text: this.errorToMessage(error)
+          text: this.buildRenderErrorMessage(error)
         });
       }
     };
@@ -182,7 +185,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
         } catch (error) {
           container.createDiv({
             cls: "plantuml-integrator-error",
-            text: this.errorToMessage(error)
+            text: this.buildRenderErrorMessage(error)
           });
         }
       };
@@ -400,8 +403,12 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   }
 
   private async renderByServer(source: string): Promise<string> {
+    return await this.renderByServerUrl(this.settings.serverUrl, source);
+  }
+
+  private async renderByServerUrl(url: string, source: string): Promise<string> {
     const response = await requestUrl({
-      url: this.settings.serverUrl,
+      url,
       method: "POST",
       body: source,
       contentType: "text/plain; charset=utf-8"
@@ -411,51 +418,69 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       throw new Error(`PlantUML server error: ${response.status}`);
     }
 
-    return response.text;
+    const svg = response.text;
+    if (!svg.trim()) {
+      throw new Error("PlantUML server returned an empty response.");
+    }
+
+    return svg;
   }
 
   private async renderByLocalJar(source: string): Promise<string> {
-    if (!this.settings.localJarPath.trim()) {
-      throw new Error("localJarPath is empty. Configure the plugin settings.");
-    }
+    try {
+      const localRenderUrl = this.buildLocalServerRenderUrl(source);
+      const response = await requestUrl({
+        url: localRenderUrl,
+        method: "GET"
+      });
 
-    const cmd = this.settings.javaCommand.trim() || "java";
-    const jarPath = this.settings.localJarPath.trim();
-
-    return await new Promise<string>((resolve, reject) => {
-      const childProcess = require("child_process") as typeof import("child_process");
-      const child = childProcess.execFile(
-        cmd,
-        ["-jar", jarPath, "-pipe", "-tsvg"],
-        { timeout: this.settings.timeoutMs },
-        (error: Error | null, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(stderr || error.message));
-            return;
-          }
-
-          if (!stdout || !stdout.trim().startsWith("<svg")) {
-            reject(new Error(stderr || "Local PlantUML did not return SVG output."));
-            return;
-          }
-
-          resolve(stdout);
-        }
-      );
-
-      if (!child.stdin) {
-        reject(new Error("stdin is not available for PlantUML process."));
-        return;
+      if (response.status >= 400) {
+        throw new Error(`Local PlantUML server error: ${response.status}`);
       }
 
-      child.stdin.write(source);
-      child.stdin.end();
-    });
+      const svg = response.text;
+      if (!svg.trim()) {
+        throw new Error("Local PlantUML server returned an empty response.");
+      }
+
+      return svg;
+    } catch (error) {
+      const message = this.errorToMessage(error);
+      const command = this.getLocalServerStartCommand();
+      throw new Error(
+        [
+          message,
+          "Tip: Start a local PlantUML server and try again.",
+          `Server URL: ${this.settings.localServerUrl}`,
+          `Start command: ${command}`
+        ].join("\n")
+      );
+    }
+  }
+
+  private buildLocalServerRenderUrl(source: string): string {
+    const configured = this.settings.localServerUrl.trim() || DEFAULT_SETTINGS.localServerUrl;
+    const normalized = configured.replace(/\/+$/, "");
+    const base = /\/svg$/i.test(normalized) ? normalized : `${normalized}/svg`;
+    const encoded = plantumlEncoder.encode(source);
+    return `${base}/${encoded}`;
   }
 
   private renderSvgIntoContainer(container: HTMLElement, svg: string): void {
     container.empty();
-    container.innerHTML = svg;
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svg, "image/svg+xml");
+    const parseError = doc.querySelector("parsererror");
+    if (parseError) {
+      throw new Error("PlantUML response is not valid SVG.");
+    }
+
+    const svgElement = doc.documentElement;
+    if (!svgElement || svgElement.tagName.toLowerCase() !== "svg") {
+      throw new Error("PlantUML response does not contain an SVG root element.");
+    }
+
+    container.appendChild(svgElement);
   }
 
   private attachContextMenu(container: HTMLElement, bindingId: string): void {
@@ -477,8 +502,42 @@ export default class PlantumlIntegratorPlugin extends Plugin {
         });
       });
 
+      menu.addItem((item) => {
+        item.setTitle("Copy local server start command").onClick(async () => {
+          const command = this.getLocalServerStartCommand();
+
+          try {
+            await navigator.clipboard.writeText(command);
+            new Notice("Local server start command copied.");
+          } catch (error) {
+            new Notice(`Failed to copy command: ${this.errorToMessage(error)}`);
+          }
+        });
+      });
+
       menu.showAtMouseEvent(evt);
     });
+  }
+
+  private getLocalServerStartCommand(): string {
+    const cmd = this.settings.javaCommand.trim() || "java";
+    const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
+    return `${cmd} -jar "${jarPath}" -picoweb`;
+  }
+
+  private buildRenderErrorMessage(error: unknown): string {
+    const message = this.errorToMessage(error);
+    if (this.settings.renderMode !== "localJar") {
+      return message;
+    }
+
+    const command = this.getLocalServerStartCommand();
+    return [
+      message,
+      "Tip: Start a local PlantUML server and switch to server mode.",
+      "Server URL example: http://127.0.0.1:8080/svg",
+      `Start command: ${command}`
+    ].join("\n");
   }
 
   private getFileMtime(path: string): number | null {
@@ -526,7 +585,9 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: "PlantUML Integrator Settings" });
+    new Setting(containerEl)
+      .setName("PlantUML integrator settings")
+      .setHeading();
 
     new Setting(containerEl)
       .setName("Render mode")
@@ -534,7 +595,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       .addDropdown((dropdown) => {
         dropdown
           .addOption("server", "Server")
-          .addOption("localJar", "Local JAR")
+          .addOption("localJar", "Local jar")
           .setValue(this.plugin.settings.renderMode)
           .onChange(async (value: string) => {
             this.plugin.settings.renderMode = value === "localJar" ? "localJar" : "server";
@@ -544,7 +605,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("PlantUML server URL")
-      .setDesc("Used when render mode is Server. Kroki endpoint is recommended.")
+      .setDesc("Used when render mode is server. Kroki endpoint is recommended.")
       .addText((text) => {
         text
           .setPlaceholder("https://kroki.io/plantuml/svg")
@@ -556,8 +617,21 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName("Local PlantUML server URL")
+      .setDesc("Used when render mode is local jar. Example: http://127.0.0.1:8080/svg")
+      .addText((text) => {
+        text
+          .setPlaceholder("http://127.0.0.1:8080/svg")
+          .setValue(this.plugin.settings.localServerUrl)
+          .onChange(async (value) => {
+            this.plugin.settings.localServerUrl = value.trim();
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
       .setName("Local PlantUML JAR path")
-      .setDesc("Used when render mode is Local JAR.")
+      .setDesc("Used to build the local server start command.")
       .addText((text) => {
         text
           .setPlaceholder("C:/tools/plantuml.jar")
@@ -583,7 +657,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Process timeout (ms)")
-      .setDesc("Timeout for local JAR execution.")
+      .setDesc("Timeout for local jar execution.")
       .addText((text) => {
         text
           .setPlaceholder("10000")
