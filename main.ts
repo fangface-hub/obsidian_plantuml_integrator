@@ -1,15 +1,16 @@
 import {
-    App,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Menu,
-    Notice,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TAbstractFile,
-    TFile,
-    requestUrl
+  App,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+  Menu,
+  Notice,
+  Platform,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+  TAbstractFile,
+  TFile,
+  requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -481,7 +482,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
       const menu = new Menu();
       menu.addItem((item) => {
-        item.setTitle("Clear PlantUML cache and re-render").onClick(async () => {
+        item.setTitle("Clear plantuml cache and re-render").onClick(async () => {
           const binding = this.renderBindings.get(bindingId);
           if (!binding) {
             return;
@@ -489,7 +490,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
           this.includeCache.delete(binding.cacheKey);
           await binding.render();
-          new Notice("PlantUML cache cleared and diagram re-rendered.");
+          new Notice("Plantuml cache cleared and diagram re-rendered.");
         });
       });
 
@@ -539,21 +540,20 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   }
 
   private getLoginStartupRegistrationCommand(): string | null {
-    const platform = navigator.userAgent.toLowerCase();
     const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
 
-    if (platform.includes("windows") || platform.includes("win64") || platform.includes("win32")) {
+    if (Platform.isWin) {
       const escapedCommand = this.escapeForPowerShellSingleQuotedString(cmd);
       const escapedJarPath = this.escapeForPowerShellSingleQuotedString(jarPath);
       return `$runKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; New-Item -Path $runKey -Force | Out-Null; $javaCommand = '${escapedCommand}'; $jarPath = '${escapedJarPath}'; $javaExe = (Get-Command $javaCommand -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source); if (-not $javaExe) { $javaExe = $javaCommand }; $command = '"' + $javaExe + '" -jar "' + $jarPath + '" -picoweb'; Set-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -Value $command`;
     }
 
-    if (platform.includes("mac os") || platform.includes("macintosh")) {
+    if (Platform.isMacOS) {
       return "launchctl load ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist";
     }
 
-    if (platform.includes("linux")) {
+    if (Platform.isLinux) {
       return "systemctl --user enable --now plantuml-picoweb.service";
     }
 
@@ -561,17 +561,15 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   }
 
   private getPlatformLabel(): string | null {
-    const platform = navigator.userAgent.toLowerCase();
-
-    if (platform.includes("windows") || platform.includes("win64") || platform.includes("win32")) {
+    if (Platform.isWin) {
       return "Windows";
     }
 
-    if (platform.includes("mac os") || platform.includes("macintosh")) {
+    if (Platform.isMacOS) {
       return "macOS";
     }
 
-    if (platform.includes("linux")) {
+    if (Platform.isLinux) {
       return "Linux";
     }
 
@@ -653,7 +651,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Render mode")
-      .setDesc("Choose where PlantUML rendering is processed.")
+      .setDesc("Choose where plantuml rendering is processed.")
       .addDropdown((dropdown) => {
         dropdown
           .addOption("server", "Server")
@@ -666,7 +664,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("PlantUML server URL")
+      .setName("Plantuml server URL")
       .setDesc("Used when render mode is server. Kroki endpoint is recommended.")
       .addText((text) => {
         text
@@ -679,7 +677,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Local PlantUML server URL")
+      .setName("Local plantuml server URL")
       .setDesc("Used when render mode is local jar. Example: http://127.0.0.1:8080/svg")
       .addText((text) => {
         text
@@ -692,7 +690,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Local PlantUML JAR path")
+      .setName("Local plantuml JAR path")
       .setDesc("Used to build the local server start command.")
       .addText((text) => {
         text
