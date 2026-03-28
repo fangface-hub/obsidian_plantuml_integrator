@@ -32,15 +32,124 @@ java -jar "<path-to-plantuml.jar>" -picoweb
 
 The server listens on port 8080 by default.
 
+**Start the local server automatically at user login:**
+
+You can register the PlantUML PicoWeb command as a per-user startup entry so it is launched when you sign in.
+
+Windows (HKCU Run):
+
+```powershell
+$runKey = 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run'
+$javaCommand = 'javaw.exe'
+$javaExe = (Get-Command $javaCommand -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
+if (-not $javaExe) { $javaExe = $javaCommand }
+$jarPath = 'C:\path\to\plantuml.jar'
+$command = '"' + $javaExe + '" -jar "' + $jarPath + '" -picoweb'
+New-Item -Path $runKey -Force | Out-Null
+Set-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -Value $command
+```
+
+macOS (LaunchAgent):
+
+```sh
+mkdir -p ~/Library/LaunchAgents
+cat > ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+   <dict>
+      <key>Label</key>
+      <string>com.user.plantuml.picoweb</string>
+      <key>ProgramArguments</key>
+      <array>
+         <string>/usr/bin/java</string>
+         <string>-jar</string>
+         <string>/path/to/plantuml.jar</string>
+         <string>-picoweb</string>
+      </array>
+      <key>RunAtLoad</key>
+      <true/>
+      <key>KeepAlive</key>
+      <true/>
+   </dict>
+</plist>
+EOF
+launchctl load ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist
+```
+
+Linux (systemd user service):
+
+```sh
+mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/plantuml-picoweb.service <<'EOF'
+[Unit]
+Description=PlantUML PicoWeb server
+
+[Service]
+ExecStart=/usr/bin/java -jar /path/to/plantuml.jar -picoweb
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user daemon-reload
+systemctl --user enable --now plantuml-picoweb.service
+```
+
+**Check whether the login startup registration is active:**
+
+Windows:
+
+```powershell
+(Get-ItemProperty -Path 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'PlantUML PicoWeb').'PlantUML PicoWeb'
+```
+
+macOS:
+
+```sh
+launchctl list | grep com.user.plantuml.picoweb
+```
+
+Linux:
+
+```sh
+systemctl --user status plantuml-picoweb.service
+```
+
+**Remove the login startup registration:**
+
+Windows:
+
+```powershell
+Remove-ItemProperty -Path 'Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'PlantUML PicoWeb'
+```
+
+macOS:
+
+```sh
+launchctl unload ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist
+rm ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist
+```
+
+Linux:
+
+```sh
+systemctl --user disable --now plantuml-picoweb.service
+rm ~/.config/systemd/user/plantuml-picoweb.service
+systemctl --user daemon-reload
+```
+
+Replace the Java executable and JAR path with values that match your environment.
+
 **Plugin settings for local jar mode:**
 
 | Setting | Description | Default |
 | --- | --- | --- |
 | Local PlantUML server URL | Base URL of the running PicoWeb server | `http://127.0.0.1:8080/svg` |
 | Local PlantUML JAR path | Path to `plantuml.jar` — used only to build the start command hint | *(empty)* |
-| Java command | Java executable name or full path | `java` |
+| Java command | Java executable name or full path | `javaw.exe` |
 
-**Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `java -jar ...` command to the clipboard.
+**Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `javaw.exe -jar ...` command to the clipboard.
 
 If the server is not running, the plugin shows the start command in the error message.
 

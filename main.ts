@@ -1,15 +1,15 @@
 import {
-  App,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  requestUrl
+    App,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -29,7 +29,7 @@ const DEFAULT_SETTINGS: PlantumlIntegratorSettings = {
   serverUrl: "https://kroki.io/plantuml/svg",
   localServerUrl: "http://127.0.0.1:8080/svg",
   localJarPath: "",
-  javaCommand: "java",
+  javaCommand: "javaw.exe",
   timeoutMs: 10000
 };
 
@@ -445,16 +445,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
       return svg;
     } catch (error) {
-      const message = this.errorToMessage(error);
-      const command = this.getLocalServerStartCommand();
-      throw new Error(
-        [
-          message,
-          "Tip: Start a local PlantUML server and try again.",
-          `Server URL: ${this.settings.localServerUrl}`,
-          `Start command: ${command}`
-        ].join("\n")
-      );
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -515,14 +506,76 @@ export default class PlantumlIntegratorPlugin extends Plugin {
         });
       });
 
+      menu.addItem((item) => {
+        item.setTitle("Copy login startup command").onClick(async () => {
+          const command = this.getLoginStartupRegistrationCommand();
+
+          if (!command) {
+            new Notice("Login startup command is not available on this platform.");
+            return;
+          }
+
+          try {
+            await navigator.clipboard.writeText(command);
+            new Notice("Login startup command copied.");
+          } catch (error) {
+            new Notice(`Failed to copy command: ${this.errorToMessage(error)}`);
+          }
+        });
+      });
+
       menu.showAtMouseEvent(evt);
     });
   }
 
   private getLocalServerStartCommand(): string {
-    const cmd = this.settings.javaCommand.trim() || "java";
+    const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
     return `${cmd} -jar "${jarPath}" -picoweb`;
+  }
+
+  private escapeForPowerShellSingleQuotedString(value: string): string {
+    return value.replace(/'/g, "''");
+  }
+
+  private getLoginStartupRegistrationCommand(): string | null {
+    const platform = navigator.userAgent.toLowerCase();
+    const cmd = this.settings.javaCommand.trim() || "javaw.exe";
+    const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
+
+    if (platform.includes("windows") || platform.includes("win64") || platform.includes("win32")) {
+      const escapedCommand = this.escapeForPowerShellSingleQuotedString(cmd);
+      const escapedJarPath = this.escapeForPowerShellSingleQuotedString(jarPath);
+      return `$runKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; New-Item -Path $runKey -Force | Out-Null; $javaCommand = '${escapedCommand}'; $jarPath = '${escapedJarPath}'; $javaExe = (Get-Command $javaCommand -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source); if (-not $javaExe) { $javaExe = $javaCommand }; $command = '"' + $javaExe + '" -jar "' + $jarPath + '" -picoweb'; Set-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -Value $command`;
+    }
+
+    if (platform.includes("mac os") || platform.includes("macintosh")) {
+      return "launchctl load ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist";
+    }
+
+    if (platform.includes("linux")) {
+      return "systemctl --user enable --now plantuml-picoweb.service";
+    }
+
+    return null;
+  }
+
+  private getPlatformLabel(): string | null {
+    const platform = navigator.userAgent.toLowerCase();
+
+    if (platform.includes("windows") || platform.includes("win64") || platform.includes("win32")) {
+      return "Windows";
+    }
+
+    if (platform.includes("mac os") || platform.includes("macintosh")) {
+      return "macOS";
+    }
+
+    if (platform.includes("linux")) {
+      return "Linux";
+    }
+
+    return null;
   }
 
   private buildRenderErrorMessage(error: unknown): string {
@@ -532,12 +585,21 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     }
 
     const command = this.getLocalServerStartCommand();
-    return [
+    const startupCommand = this.getLoginStartupRegistrationCommand();
+    const platformLabel = this.getPlatformLabel();
+    const lines = [
       message,
-      "Tip: Start a local PlantUML server and switch to server mode.",
+      "Tip: Start a local PlantUML server and try again.",
       "Server URL example: http://127.0.0.1:8080/svg",
       `Start command: ${command}`
-    ].join("\n");
+    ];
+
+    if (startupCommand && platformLabel) {
+      lines.push(`Start at login (${platformLabel}): ${startupCommand}`);
+      lines.push("See README for the full setup steps.");
+    }
+
+    return lines.join("\n");
   }
 
   private getFileMtime(path: string): number | null {
@@ -644,10 +706,10 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Java command")
-      .setDesc("Command used to execute Java (for example: java or full path).")
+      .setDesc("Command used to execute Java (for example: javaw.exe or full path).")
       .addText((text) => {
         text
-          .setPlaceholder("java")
+          .setPlaceholder("javaw.exe")
           .setValue(this.plugin.settings.javaCommand)
           .onChange(async (value) => {
             this.plugin.settings.javaCommand = value.trim();
