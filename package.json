@@ -1,11 +1,14 @@
 {
   "name": "obsidian-plantuml-integrator",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Obsidian plugin to render PlantUML from code blocks and .puml files",
   "main": "main.js",
   "scripts": {
     "build": "node esbuild.config.mjs",
-    "dev": "node esbuild.config.mjs --watch"
+    "dev": "node esbuild.config.mjs --watch",
+    "lint": "eslint main.ts",
+    "lint:fix": "eslint main.ts --fix",
+    "version:patch": "node scripts/bump-patch-version.mjs"
   },
   "keywords": [
     "obsidian",
@@ -15,7 +18,10 @@
   "author": "nakam",
   "license": "MIT",
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.57.2",
     "esbuild": "^0.25.5",
+    "eslint": "^9.39.4",
+    "eslint-plugin-obsidianmd": "^0.1.9",
     "obsidian": "^1.8.9",
     "typescript": "^5.8.3"
   },

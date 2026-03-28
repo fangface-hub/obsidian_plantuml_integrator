@@ -1,7 +1,7 @@
 {
   "id": "plantuml-integrator",
   "name": "PlantUML Integrator",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "minAppVersion": "1.5.0",
   "description": "Render PlantUML code blocks and .puml embeds with dependency-aware cache invalidation.",
   "author": "fangface",

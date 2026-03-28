@@ -192,17 +192,32 @@ npm run dev
 
 Copy `manifest.json`, `main.js`, and `styles.css` to your Obsidian vault plugin folder.
 
+## Lint
+
+Run lint checks:
+
+```sh
+npm run lint
+```
+
+Run lint checks with auto-fix:
+
+```sh
+npm run lint:fix
+```
+
 ## Community Plugin Release
 
 1. Verify `manifest.json` fields: `id`, `name`, `author`, `description`, and `version`.
-2. Update `versions.json` with `"<plugin version>": "<minAppVersion>"`.
-3. Run `npm run build` to generate `main.js`.
-4. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
-5. Attach the following 3 files as release assets:
+2. Run `npm run version:patch` for fix releases. This command updates `package.json`, `package-lock.json`, `manifest.json`, and `versions.json` together.
+3. Run `npm run lint`.
+4. Run `npm run build` to generate `main.js`.
+5. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
+6. Attach the following 3 files as release assets:
     - `manifest.json`
     - `main.js`
     - `styles.css`
-6. Submit a registration PR to the Obsidian community plugin list repository.
+7. Submit a registration PR to the Obsidian community plugin list repository.
 
 ## GitHub Actions (Release ZIP)
 
@@ -215,8 +230,8 @@ Copy `manifest.json`, `main.js`, and `styles.css` to your Obsidian vault plugin 
 
 ## Version Bump Checklist
 
-1. Update `version` in `manifest.json`
-2. Add the new version mapping in `versions.json`
+1. Run `npm run version:patch`
+2. Verify the updated version in `manifest.json` and `versions.json`
 3. `npm run build`
 4. Create a git tag and GitHub Release
 

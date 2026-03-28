@@ -1,18 +1,18 @@
 import {
-  App,
-  ButtonComponent,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Platform,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  TextAreaComponent,
-  requestUrl
+    App,
+    ButtonComponent,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Platform,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    TextAreaComponent,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -788,10 +788,10 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Java command")
-      .setDesc("Command used to execute Java (for example, javaw.exe or full path).")
+      .setDesc("Command used to execute java (for example, javaw.exe or full path).")
       .addText((text) => {
         text
-          .setPlaceholder("Example: javaw.exe")
+          .setPlaceholder("For example: javaw.exe")
           .setValue(this.plugin.settings.javaCommand)
           .onChange(async (value) => {
             this.plugin.settings.javaCommand = value.trim();
