@@ -10,6 +10,10 @@ An Obsidian plugin that renders PlantUML diagrams and is ready for Community Plu
 - Right-click each rendered diagram to clear cache and re-render only that diagram.
 - Select rendering mode: remote server endpoint or local PlantUML server.
 
+### Code block rendering image
+
+![Code block rendering image](code_block.drawio.svg)
+
 ## Render Modes
 
 ### Server mode (default)
@@ -141,13 +145,24 @@ systemctl --user daemon-reload
 
 Replace the Java executable and JAR path with values that match your environment.
 
-**Plugin settings for local jar mode:**
+**Plugin settings:**
+
+### Settings screen image
+
+![Settings screen image](setting_image.drawio.svg)
 
 | Setting | Description | Default |
 | --- | --- | --- |
-| Local PlantUML server URL | Base URL of the running PicoWeb server | `http://127.0.0.1:8080/svg` |
-| Local PlantUML JAR path | Path to `plantuml.jar` — used only to build the start command hint | *(empty)* |
-| Java command | Java executable name or full path | `javaw.exe` |
+| Render mode | Choose where plantuml rendering is processed (`Server` or `Local jar`) | `Server` |
+| Plantuml server URL | Used when render mode is server | `https://kroki.io/plantuml/svg` |
+| Local plantuml server URL | Used when render mode is local jar | `http://127.0.0.1:8080/svg` |
+| Local plantuml JAR path | Used to build local server start/stop command hints | *(empty)* |
+| Java command | Command used to execute Java | `javaw.exe` |
+| Process timeout (ms) | Timeout for local jar execution | `10000` |
+| Local server start command | Read-only command text shown in **Commands**, copyable | Auto-generated from `Java command` and `Local plantuml JAR path` |
+| Local server stop command | Read-only command text shown in **Commands**, copyable | Platform-specific auto-generated value |
+| Login startup command | Read-only command text to register startup at login, copyable | Platform-specific auto-generated value |
+| Login startup unregister command | Read-only command text to unregister startup at login, copyable | Platform-specific auto-generated value |
 
 **Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `javaw.exe -jar ...` command to the clipboard.
 
