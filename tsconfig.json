@@ -6,12 +6,11 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-    "types": ["node"],
     "lib": ["DOM", "ES2020"],
     "allowJs": false,
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["main.ts"]
+  "include": ["main.ts", "*.d.ts"]
 }

@@ -586,7 +586,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("PlantUML integrator settings")
+      .setName("Rendering")
       .setHeading();
 
     new Setting(containerEl)
