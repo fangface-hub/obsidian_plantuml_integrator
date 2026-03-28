@@ -153,14 +153,14 @@ Replace the Java executable and JAR path with values that match your environment
 
 | Setting | Description | Default |
 | --- | --- | --- |
-| Render mode | Choose where plantuml rendering is processed (`Server` or `Local jar`) | `Server` |
+| Render mode | Choose where PlantUML rendering is processed (`Server` or `Local jar`). | `Server` |
 | Plantuml server URL | Used when render mode is server | `https://kroki.io/plantuml/svg` |
 | Local plantuml server URL | Used when render mode is local jar | `http://127.0.0.1:8080/svg` |
-| Local plantuml JAR path | Used to build local server start/stop command hints | *(empty)* |
+| Local PlantUML jar path | Used to build the local server start command. | *(empty)* |
 | Java command | Command used to execute Java | `javaw.exe` |
 | Process timeout (ms) | Timeout for local jar execution | `10000` |
-| Local server start command | Read-only command text shown in **Commands**, copyable | Auto-generated from `Java command` and `Local plantuml JAR path` |
-| Local server stop command | Read-only command text shown in **Commands**, copyable | Platform-specific auto-generated value |
+| Local server start command | Displayed command used to start the local PlantUML server | Auto-generated from `Java command` and `Local PlantUML jar path` |
+| Local server stop command | Displayed command used to stop the local PlantUML server | Platform-specific auto-generated value |
 | Login startup command | Read-only command text to register startup at login, copyable | Platform-specific auto-generated value |
 | Login startup unregister command | Read-only command text to unregister startup at login, copyable | Platform-specific auto-generated value |
 
