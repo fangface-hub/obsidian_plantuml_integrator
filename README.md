@@ -224,4 +224,4 @@ Copy `manifest.json`, `main.js`, and `styles.css` to your Obsidian vault plugin 
 
 If you find this plugin helpful, consider sponsoring the project:
 
-[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ff69b4?style=for-the-badge)](https://github.com/sponsors/fangface)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ff69b4?style=for-the-badge)](https://github.com/sponsors/fangface-hub)
