@@ -1,5 +1,6 @@
 import {
   App,
+  ButtonComponent,
   MarkdownPostProcessorContext,
   MarkdownRenderChild,
   Menu,
@@ -10,6 +11,7 @@ import {
   Setting,
   TAbstractFile,
   TFile,
+  TextAreaComponent,
   requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
@@ -529,7 +531,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     });
   }
 
-  private getLocalServerStartCommand(): string {
+  getLocalServerStartCommand(): string {
     const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
     return `${cmd} -jar "${jarPath}" -picoweb`;
@@ -539,7 +541,27 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     return value.replace(/'/g, "''");
   }
 
-  private getLoginStartupRegistrationCommand(): string | null {
+  private escapeForShellSingleQuotedString(value: string): string {
+    return value.replace(/'/g, `'"'"'`);
+  }
+
+  getLocalServerStopCommand(): string | null {
+    const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
+
+    if (Platform.isWin) {
+      const escapedJarPath = this.escapeForPowerShellSingleQuotedString(jarPath);
+      return `$jarPath = '${escapedJarPath}'; Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^javaw?\\.exe$' -and $_.CommandLine -like ('*' + $jarPath + '*') -and $_.CommandLine -like '*-picoweb*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+    }
+
+    if (Platform.isMacOS || Platform.isLinux) {
+      const escapedJarPath = this.escapeForShellSingleQuotedString(jarPath);
+      return `pkill -f '${escapedJarPath}.*-picoweb'`;
+    }
+
+    return null;
+  }
+
+  getLoginStartupRegistrationCommand(): string | null {
     const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
 
@@ -560,7 +582,23 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     return null;
   }
 
-  private getPlatformLabel(): string | null {
+  getLoginStartupUnregistrationCommand(): string | null {
+    if (Platform.isWin) {
+      return "$runKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; Remove-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -ErrorAction SilentlyContinue";
+    }
+
+    if (Platform.isMacOS) {
+      return "launchctl unload ~/Library/LaunchAgents/com.user.plantuml.picoweb.plist";
+    }
+
+    if (Platform.isLinux) {
+      return "systemctl --user disable --now plantuml-picoweb.service";
+    }
+
+    return null;
+  }
+
+  getPlatformLabel(): string | null {
     if (Platform.isWin) {
       return "Windows";
     }
@@ -645,6 +683,51 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
+    let localCommandTextArea: TextAreaComponent | null = null;
+    let stopCommandTextArea: TextAreaComponent | null = null;
+    let startupCommandTextArea: TextAreaComponent | null = null;
+    let startupCopyButton: ButtonComponent | null = null;
+    let startupUnregisterCommandTextArea: TextAreaComponent | null = null;
+    let startupUnregisterCopyButton: ButtonComponent | null = null;
+    const platformInfoEl = containerEl.createEl("p");
+
+    const refreshCommandSettings = (): void => {
+      const localCommand = this.plugin.getLocalServerStartCommand();
+      const stopCommand = this.plugin.getLocalServerStopCommand();
+      const startupCommand = this.plugin.getLoginStartupRegistrationCommand();
+      const startupUnregisterCommand = this.plugin.getLoginStartupUnregistrationCommand();
+      const platformLabel = this.plugin.getPlatformLabel();
+      const startupDisplay = startupCommand ?? "Not available on this platform.";
+      const stopDisplay = stopCommand ?? "Not available on this platform.";
+      const startupUnregisterDisplay = startupUnregisterCommand ?? "Not available on this platform.";
+
+      if (localCommandTextArea) {
+        localCommandTextArea.setValue(localCommand);
+      }
+
+      if (stopCommandTextArea) {
+        stopCommandTextArea.setValue(stopDisplay);
+      }
+
+      if (startupCommandTextArea) {
+        startupCommandTextArea.setValue(startupDisplay);
+      }
+
+      if (startupUnregisterCommandTextArea) {
+        startupUnregisterCommandTextArea.setValue(startupUnregisterDisplay);
+      }
+
+      if (startupCopyButton) {
+        startupCopyButton.setDisabled(!startupCommand);
+      }
+
+      if (startupUnregisterCopyButton) {
+        startupUnregisterCopyButton.setDisabled(!startupUnregisterCommand);
+      }
+
+      platformInfoEl.setText(platformLabel ? `Platform: ${platformLabel}` : "");
+    };
+
     new Setting(containerEl)
       .setName("Rendering")
       .setHeading();
@@ -699,6 +782,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.localJarPath = value;
             await this.plugin.saveSettings();
+            refreshCommandSettings();
           });
       });
 
@@ -712,6 +796,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.javaCommand = value.trim();
             await this.plugin.saveSettings();
+            refreshCommandSettings();
           });
       });
 
@@ -728,5 +813,126 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
+
+    new Setting(containerEl)
+      .setName("Commands")
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName("Local server start command")
+      .setDesc("Displayed command for starting the local PlantUML server.")
+      .addTextArea((text) => {
+        localCommandTextArea = text;
+        text
+          .setValue(this.plugin.getLocalServerStartCommand())
+          .setDisabled(true);
+        text.inputEl.rows = 2;
+      })
+      .addButton((button) => {
+        button.setButtonText("Copy").onClick(async () => {
+          const command = this.plugin.getLocalServerStartCommand();
+          try {
+            await navigator.clipboard.writeText(command);
+            new Notice("Local server start command copied.");
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            new Notice(`Failed to copy command: ${message}`);
+          }
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Local server stop command")
+      .setDesc("Displayed command for stopping the local PlantUML server.")
+      .addTextArea((text) => {
+        stopCommandTextArea = text;
+        text
+          .setValue(this.plugin.getLocalServerStopCommand() ?? "Not available on this platform.")
+          .setDisabled(true);
+        text.inputEl.rows = 2;
+      })
+      .addButton((button) => {
+        button
+          .setButtonText("Copy")
+          .onClick(async () => {
+            const stopCommand = this.plugin.getLocalServerStopCommand();
+            if (!stopCommand) {
+              new Notice("Stop command is not available on this platform.");
+              return;
+            }
+
+            try {
+              await navigator.clipboard.writeText(stopCommand);
+              new Notice("Local server stop command copied.");
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              new Notice(`Failed to copy command: ${message}`);
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Login startup command")
+      .setDesc("Displayed command for registering local server startup at login.")
+      .addTextArea((text) => {
+        startupCommandTextArea = text;
+        text
+          .setValue(this.plugin.getLoginStartupRegistrationCommand() ?? "Not available on this platform.")
+          .setDisabled(true);
+        text.inputEl.rows = 3;
+      })
+      .addButton((button) => {
+        startupCopyButton = button;
+        button
+          .setButtonText("Copy")
+          .onClick(async () => {
+            const startupCommand = this.plugin.getLoginStartupRegistrationCommand();
+            if (!startupCommand) {
+              new Notice("Login startup command is not available on this platform.");
+              return;
+            }
+
+            try {
+              await navigator.clipboard.writeText(startupCommand);
+              new Notice("Login startup command copied.");
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              new Notice(`Failed to copy command: ${message}`);
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Login startup unregister command")
+      .setDesc("Displayed command for unregistering local server startup at login.")
+      .addTextArea((text) => {
+        startupUnregisterCommandTextArea = text;
+        text
+          .setValue(this.plugin.getLoginStartupUnregistrationCommand() ?? "Not available on this platform.")
+          .setDisabled(true);
+        text.inputEl.rows = 3;
+      })
+      .addButton((button) => {
+        startupUnregisterCopyButton = button;
+        button
+          .setButtonText("Copy")
+          .onClick(async () => {
+            const startupUnregisterCommand = this.plugin.getLoginStartupUnregistrationCommand();
+            if (!startupUnregisterCommand) {
+              new Notice("Login startup unregister command is not available on this platform.");
+              return;
+            }
+
+            try {
+              await navigator.clipboard.writeText(startupUnregisterCommand);
+              new Notice("Login startup unregister command copied.");
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              new Notice(`Failed to copy command: ${message}`);
+            }
+          });
+      });
+
+    refreshCommandSettings();
   }
 }
