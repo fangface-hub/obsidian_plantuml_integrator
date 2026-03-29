@@ -1,18 +1,18 @@
 import {
-    App,
-    ButtonComponent,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Menu,
-    Notice,
-    Platform,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TAbstractFile,
-    TFile,
-    TextAreaComponent,
-    requestUrl
+  App,
+  ButtonComponent,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+  Menu,
+  Notice,
+  Platform,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+  TAbstractFile,
+  TFile,
+  TextAreaComponent,
+  requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -773,7 +773,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Local PlantUML jar path")
+      .setName("Path to the local PlantUML jar")
       .setDesc("Used to build the local server start command.")
       .addText((text) => {
         text
@@ -820,7 +820,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Local server start command")
-      .setDesc("Displayed command used to start the local PlantUML server.")
+      .setDesc("Command displayed to start the local PlantUML server.")
       .addTextArea((text) => {
         localCommandTextArea = text;
         text
@@ -843,7 +843,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Local server stop command")
-      .setDesc("Displayed command used to stop the local PlantUML server.")
+      .setDesc("Command displayed to stop the local PlantUML server.")
       .addTextArea((text) => {
         stopCommandTextArea = text;
         text

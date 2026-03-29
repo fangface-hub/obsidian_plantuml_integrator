@@ -153,16 +153,16 @@ Replace the Java executable and JAR path with values that match your environment
 
 | Setting | Description | Default |
 | --- | --- | --- |
-| Render mode | Choose where PlantUML rendering is processed (`Server` or `Local jar`). | `Server` |
-| Plantuml server URL | Used when render mode is server | `https://kroki.io/plantuml/svg` |
-| Local plantuml server URL | Used when render mode is local jar | `http://127.0.0.1:8080/svg` |
-| Local PlantUML jar path | Used to build the local server start command. | *(empty)* |
-| Java command | Command used to execute Java | `javaw.exe` |
-| Process timeout (ms) | Timeout for local jar execution | `10000` |
-| Local server start command | Displayed command used to start the local PlantUML server | Auto-generated from `Java command` and `Local PlantUML jar path` |
-| Local server stop command | Displayed command used to stop the local PlantUML server | Platform-specific auto-generated value |
-| Login startup command | Read-only command text to register startup at login, copyable | Platform-specific auto-generated value |
-| Login startup unregister command | Read-only command text to unregister startup at login, copyable | Platform-specific auto-generated value |
+| Render mode | Choose where plantuml rendering is processed. | `Server` |
+| Plantuml server URL | Used when render mode is server. Kroki endpoint is recommended. | `https://kroki.io/plantuml/svg` |
+| Local plantuml server URL | Used when render mode is local jar. Example: `http://127.0.0.1:8080/svg` | `http://127.0.0.1:8080/svg` |
+| Path to the local PlantUML jar | Used to build the local server start command. | *(empty)* |
+| Java command | Command used to execute java (for example, javaw.exe or full path). | `javaw.exe` |
+| Process timeout (ms) | Timeout for local jar execution. | `10000` |
+| Local server start command | Command displayed to start the local PlantUML server | Auto-generated from `Java command` and `Path to the local PlantUML jar` |
+| Local server stop command | Command displayed to stop the local PlantUML server | Platform-specific auto-generated value |
+| Login startup command | Displayed command for registering local server startup at login. | Platform-specific auto-generated value |
+| Login startup unregister command | Displayed command for unregistering local server startup at login. | Platform-specific auto-generated value |
 
 **Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `javaw.exe -jar ...` command to the clipboard.
 
@@ -206,18 +206,21 @@ Run lint checks with auto-fix:
 npm run lint:fix
 ```
 
+`npm run lint:fix` only applies ESLint auto-fixes and does not update version files.
+
 ## Community Plugin Release
 
 1. Verify `manifest.json` fields: `id`, `name`, `author`, `description`, and `version`.
-2. Run `npm run version:patch` for fix releases. This command updates `package.json`, `package-lock.json`, `manifest.json`, and `versions.json` together.
+2. Run `npm run lint:fix`.
 3. Run `npm run lint`.
-4. Run `npm run build` to generate `main.js`.
-5. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
-6. Attach the following 3 files as release assets:
+4. Run `npm run version:patch` for fix releases. This command updates `package.json`, `package-lock.json`, `manifest.json`, and `versions.json` together.
+5. Run `npm run build` to generate `main.js`.
+6. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
+7. Attach the following 3 files as release assets:
     - `manifest.json`
     - `main.js`
     - `styles.css`
-7. Submit a registration PR to the Obsidian community plugin list repository.
+8. Submit a registration PR to the Obsidian community plugin list repository.
 
 ## GitHub Actions (Release ZIP)
 
