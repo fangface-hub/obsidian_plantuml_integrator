@@ -1,18 +1,19 @@
 import {
-  App,
-  ButtonComponent,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Platform,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  TextAreaComponent,
-  requestUrl
+    App,
+    ButtonComponent,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Platform,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    TextAreaComponent,
+    createDiv,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -456,7 +457,8 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     const configured = this.settings.localServerUrl.trim() || DEFAULT_SETTINGS.localServerUrl;
     const normalized = configured.replace(/\/+$/, "");
     const base = /\/svg$/i.test(normalized) ? normalized : `${normalized}/svg`;
-    const encoded = plantumlEncoder.encode(source);
+    const encoder = plantumlEncoder as unknown as { encode: (input: string) => string };
+    const encoded = encoder.encode(source);
     return `${base}/${encoded}`;
   }
 
@@ -484,7 +486,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
       const menu = new Menu();
       menu.addItem((item) => {
-        item.setTitle("Clear plantuml cache and re-render").onClick(async () => {
+        item.setTitle("Clear PlantUML cache and re-render").onClick(async () => {
           const binding = this.renderBindings.get(bindingId);
           if (!binding) {
             return;
@@ -492,7 +494,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
           this.includeCache.delete(binding.cacheKey);
           await binding.render();
-          new Notice("Plantuml cache cleared and diagram re-rendered.");
+          new Notice("PlantUML cache cleared and diagram re-rendered.");
         });
       });
 
@@ -663,7 +665,11 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loaded = (await this.loadData()) as Partial<PlantumlIntegratorSettings> | null;
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...(loaded ?? {})
+    };
   }
 
   async saveSettings(): Promise<void> {
@@ -734,11 +740,11 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Render mode")
-      .setDesc("Choose where plantuml rendering is processed.")
+      .setDesc("Choose where PlantUML rendering is processed.")
       .addDropdown((dropdown) => {
         dropdown
           .addOption("server", "Server")
-          .addOption("localJar", "Local jar")
+          .addOption("localJar", "Local JAR")
           .setValue(this.plugin.settings.renderMode)
           .onChange(async (value: string) => {
             this.plugin.settings.renderMode = value === "localJar" ? "localJar" : "server";
@@ -747,7 +753,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Plantuml server URL")
+      .setName("PlantUML server URL")
       .setDesc("Used when render mode is server. Kroki endpoint is recommended.")
       .addText((text) => {
         text
@@ -760,8 +766,8 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Local plantuml server URL")
-      .setDesc("Used when render mode is local jar. Example: http://127.0.0.1:8080/svg")
+      .setName("Local PlantUML server URL")
+      .setDesc("Used when render mode is local JAR. Example: http://127.0.0.1:8080/svg")
       .addText((text) => {
         text
           .setPlaceholder("http://127.0.0.1:8080/svg")
@@ -773,7 +779,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Path to the local PlantUML jar")
+      .setName("Path to the local PlantUML JAR")
       .setDesc("Used to build the local server start command.")
       .addText((text) => {
         text
@@ -802,7 +808,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Process timeout (ms)")
-      .setDesc("Timeout for local jar execution.")
+      .setDesc("Timeout for local JAR execution.")
       .addText((text) => {
         text
           .setPlaceholder("10000")

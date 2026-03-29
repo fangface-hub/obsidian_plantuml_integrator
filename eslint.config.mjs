@@ -12,10 +12,19 @@ export default defineConfig([
       parser: tsparser,
       parserOptions: {
         project: "./tsconfig.json"
+      },
+      globals: {
+        navigator: "readonly"
       }
     },
     rules: {
-      "obsidianmd/ui/sentence-case": "error"
+      "obsidianmd/ui/sentence-case": [
+        "error",
+        {
+          brands: ["PlantUML"],
+          acronyms: ["URL", "JAR", "HKCU"]
+        }
+      ]
     }
   }
 ]);
