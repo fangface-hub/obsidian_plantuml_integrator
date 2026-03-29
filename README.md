@@ -159,8 +159,8 @@ Replace the Java executable and JAR path with values that match your environment
 | Path to the local PlantUML jar | Used to build the local server start command. | *(empty)* |
 | Java command | Command used to execute java (for example, javaw.exe or full path). | `javaw.exe` |
 | Process timeout (ms) | Timeout for local jar execution. | `10000` |
-| Local server start command | Command displayed to start the local PlantUML server | Auto-generated from `Java command` and `Path to the local PlantUML jar` |
-| Local server stop command | Command displayed to stop the local PlantUML server | Platform-specific auto-generated value |
+| Local server start command | Copy this command to start the local PlantUML server. | Auto-generated from `Java command` and `Path to the local PlantUML jar` |
+| Local server stop command | Copy this command to stop the local PlantUML server. | Platform-specific auto-generated value |
 | Login startup command | Displayed command for registering local server startup at login. | Platform-specific auto-generated value |
 | Login startup unregister command | Displayed command for unregistering local server startup at login. | Platform-specific auto-generated value |
 

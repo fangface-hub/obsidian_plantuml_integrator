@@ -820,7 +820,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Local server start command")
-      .setDesc("Command displayed to start the local PlantUML server.")
+      .setDesc("Copy this command to start the local PlantUML server.")
       .addTextArea((text) => {
         localCommandTextArea = text;
         text
@@ -843,7 +843,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Local server stop command")
-      .setDesc("Command displayed to stop the local PlantUML server.")
+      .setDesc("Copy this command to stop the local PlantUML server.")
       .addTextArea((text) => {
         stopCommandTextArea = text;
         text
