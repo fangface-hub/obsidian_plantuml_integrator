@@ -18,13 +18,7 @@ export default defineConfig([
       }
     },
     rules: {
-      "obsidianmd/ui/sentence-case": [
-        "error",
-        {
-          brands: ["PlantUML"],
-          acronyms: ["URL", "JAR", "HKCU"]
-        }
-      ]
+      "obsidianmd/ui/sentence-case": ["error", { enforceCamelCaseLower: true }]
     }
   }
 ]);
