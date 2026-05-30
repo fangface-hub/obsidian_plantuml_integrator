@@ -34,7 +34,6 @@ jobs:
           VERSION=$(node -p "require('./manifest.json').version")
           echo "id=${ID}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "zip_name=${ID}-${VERSION}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Prepare package directory
         run: |
@@ -43,11 +42,6 @@ jobs:
           cp main.js dist/
           cp styles.css dist/
           cp versions.json dist/
-
-      - name: Create zip
-        run: |
-          cd dist
-          zip -r "../${{ steps.meta.outputs.zip_name }}" .
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -73,7 +67,6 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.version }}
           files: |
-            ${{ steps.meta.outputs.zip_name }}
             manifest.json
             main.js
             styles.css
