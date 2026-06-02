@@ -452,12 +452,45 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   }
 
   private buildLocalServerRenderUrl(source: string): string {
-    const configured = this.settings.localServerUrl.trim() || DEFAULT_SETTINGS.localServerUrl;
-    const normalized = configured.replace(/\/+$/, "");
-    const base = /\/svg$/i.test(normalized) ? normalized : `${normalized}/svg`;
+    const base = this.getNormalizedLocalServerUrl();
     const encoder = plantumlEncoder as unknown as { encode: (input: string) => string };
     const encoded = encoder.encode(source);
     return `${base}/${encoded}`;
+  }
+
+  private getNormalizedLocalServerUrl(): string {
+    const fallback = DEFAULT_SETTINGS.localServerUrl;
+    const configured = this.settings.localServerUrl.trim() || fallback;
+    const candidate = /^[a-z][a-z0-9+.-]*:\/\//i.test(configured) ? configured : `http://${configured}`;
+
+    try {
+      const parsed = new URL(candidate);
+      const pathname = parsed.pathname.replace(/\/+$/, "");
+      parsed.pathname = /\/svg$/i.test(pathname) ? pathname : `${pathname || ""}/svg`;
+      return parsed.toString().replace(/\/+$/, "");
+    } catch {
+      const normalizedFallback = fallback.replace(/\/+$/, "");
+      return /\/svg$/i.test(normalizedFallback) ? normalizedFallback : `${normalizedFallback}/svg`;
+    }
+  }
+
+  private getConfiguredLocalServerPort(): number | null {
+    const normalizedUrl = this.getNormalizedLocalServerUrl();
+    try {
+      const parsed = new URL(normalizedUrl);
+      if (!parsed.port) {
+        return null;
+      }
+
+      const port = Number(parsed.port);
+      if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        return null;
+      }
+
+      return port;
+    } catch {
+      return null;
+    }
   }
 
   private renderSvgIntoContainer(container: HTMLElement, svg: string): void {
@@ -534,7 +567,9 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   getLocalServerStartCommand(): string {
     const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
-    return `${cmd} -jar "${jarPath}" -picoweb`;
+    const port = this.getConfiguredLocalServerPort();
+    const picoWebOption = port ? `-picoweb:${port}` : "-picoweb";
+    return `${cmd} -jar "${jarPath}" ${picoWebOption}`;
   }
 
   private escapeForPowerShellSingleQuotedString(value: string): string {
@@ -564,11 +599,14 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   getLoginStartupRegistrationCommand(): string | null {
     const cmd = this.settings.javaCommand.trim() || "javaw.exe";
     const jarPath = this.settings.localJarPath.trim() || "<path-to-plantuml.jar>";
+    const port = this.getConfiguredLocalServerPort();
+    const picoWebOption = port ? `-picoweb:${port}` : "-picoweb";
 
     if (Platform.isWin) {
       const escapedCommand = this.escapeForPowerShellSingleQuotedString(cmd);
       const escapedJarPath = this.escapeForPowerShellSingleQuotedString(jarPath);
-      return `$runKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; New-Item -Path $runKey -Force | Out-Null; $javaCommand = '${escapedCommand}'; $jarPath = '${escapedJarPath}'; $javaExe = (Get-Command $javaCommand -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source); if (-not $javaExe) { $javaExe = $javaCommand }; $command = '"' + $javaExe + '" -jar "' + $jarPath + '" -picoweb'; Set-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -Value $command`;
+      const escapedPicoWebOption = this.escapeForPowerShellSingleQuotedString(picoWebOption);
+      return `$runKey = 'Registry::HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'; New-Item -Path $runKey -Force | Out-Null; $javaCommand = '${escapedCommand}'; $jarPath = '${escapedJarPath}'; $picoWebOption = '${escapedPicoWebOption}'; $javaExe = (Get-Command $javaCommand -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source); if (-not $javaExe) { $javaExe = $javaCommand }; $command = '"' + $javaExe + '" -jar "' + $jarPath + '" ' + $picoWebOption; Set-ItemProperty -Path $runKey -Name 'PlantUML PicoWeb' -Value $command`;
     }
 
     if (Platform.isMacOS) {
