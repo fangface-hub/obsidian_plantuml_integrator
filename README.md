@@ -172,7 +172,7 @@ If the server is not running, the plugin shows the start command in the error me
 
 ### Clipboard Access
 
-This plugin requests `clipboard-read` and `clipboard-write` permissions exclusively for **user-initiated copy operations**:
+This plugin uses clipboard access exclusively for **user-initiated copy operations** (`clipboard-write` only):
 
 **When clipboard is accessed:**
 
@@ -186,7 +186,8 @@ This plugin requests `clipboard-read` and `clipboard-write` permissions exclusiv
 
 - Clipboard is never accessed automatically or in the background
 - Access only occurs when the user explicitly clicks a "Copy" button or menu item
-- No data is read from or written to the clipboard except the commands specified above
+- No clipboard reads are performed
+- No data is written to the clipboard except the commands specified above
 
 ## Build
 
