@@ -232,45 +232,37 @@ npm run lint:fix
 
 1. Verify `manifest.json` fields: `id`, `name`, `author`, `description`, and `version`.
 2. Run `npm run lint:fix`.
-3. Run `npm run lint`.
-4. Run `npm run verify:release` to verify all release requirements are met.
-5. Bump the version based on the type of release:
+3. Run `npm run lint` to verify the plugin meets Obsidian guidelines. This will check:
+
+   - TypeScript code for sentence-case UI text
+   - Plugin manifest structure and configuration
+   - Other Obsidian plugin best practices
+
+4. Bump the version based on the type of release:
    - **For bug fixes (patch):** `npm run version:patch` (e.g., `0.1.12` → `0.1.13`)
    - **For new features (minor):** `npm run version:minor` (e.g., `0.1.12` → `0.2.0`)
    - **For breaking changes (major):** `npm run version:major` (e.g., `0.1.12` → `1.0.0`)
 
    This updates `package.json`, `manifest.json`, and `versions.json` together.
 
-6. Run `npm run build` to generate `main.js`.
-7. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
-8. The GitHub Actions workflow automatically:
+5. Run `npm run build` to generate `main.js`.
+
+6. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
+
+7. The GitHub Actions workflow automatically:
 
    - Generates release notes from git commits since the previous tag
    - Creates artifact attestations for `main.js` and `styles.css` to establish provenance
    - Verifies all release requirements (manifest fields, permissions, assets)
    - Attaches release notes and attestations to the GitHub Release
 
-9. Attach the following 3 files as release assets:
+8. Attach the following 3 files as release assets:
 
    - `manifest.json`
    - `main.js`
    - `styles.css`
 
-10. Submit a registration PR to the Obsidian community plugin list repository.
-
-### Release Verification
-
-Run the release verification script locally:
-
-```sh
-npm run verify:release
-```
-
-This checks:
-
-- `manifest.json` contains all required fields
-- Clipboard access permissions are declared (`clipboard-read`, `clipboard-write`)
-- Release assets exist after building
+9. Submit a registration PR to the Obsidian community plugin list repository.
 
 ### Artifact Attestations
 

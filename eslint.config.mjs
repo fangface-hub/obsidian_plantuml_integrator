@@ -3,11 +3,9 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
+  ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts"],
-    plugins: {
-      obsidianmd
-    },
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -16,9 +14,6 @@ export default defineConfig([
       globals: {
         navigator: "readonly"
       }
-    },
-    rules: {
-      "obsidianmd/ui/sentence-case": ["error", { enforceCamelCaseLower: true }]
     }
   }
 ]);

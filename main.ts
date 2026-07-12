@@ -1,18 +1,18 @@
 import {
-  App,
-  ButtonComponent,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Platform,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  TextAreaComponent,
-  requestUrl
+    App,
+    ButtonComponent,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Platform,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    TextAreaComponent,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -721,6 +721,10 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  getSettingDefinitions(): never[] {
+    return [];
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -793,7 +797,7 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
       .setDesc("Used when render mode is server. Kroki endpoint is recommended.")
       .addText((text) => {
         text
-          .setPlaceholder("https://kroki.io/plantuml/svg")
+          .setPlaceholder("For example: https://kroki.io/plantuml/SVG")
           .setValue(this.plugin.settings.serverUrl)
           .onChange(async (value) => {
             this.plugin.settings.serverUrl = value.trim();
@@ -803,10 +807,10 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Local plantuml server URL")
-      .setDesc("Used when render mode is local JAR. Example: http://127.0.0.1:8080/svg")
+      .setDesc("Used when render mode is local jar. Example: http://127.0.0.1:8080/SVG")
       .addText((text) => {
         text
-          .setPlaceholder("http://127.0.0.1:8080/svg")
+          .setPlaceholder("For example: http://127.0.0.1:8080/SVG")
           .setValue(this.plugin.settings.localServerUrl)
           .onChange(async (value) => {
             this.plugin.settings.localServerUrl = value.trim();

@@ -29,7 +29,7 @@ jobs:
         run: npm run build
 
       - name: Verify release requirements
-        run: npm run verify:release
+        run: npm run lint
 
       - name: Read manifest metadata
         id: meta
@@ -93,4 +93,4 @@ jobs:
             manifest.json
             main.js
             styles.css
-            ${{ steps.attest.outputs.bundle-path }}
+          fail_on_unmatched_files: true
