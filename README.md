@@ -168,6 +168,26 @@ Replace the Java executable and JAR path with values that match your environment
 
 If the server is not running, the plugin shows the start command in the error message.
 
+## Security and Permissions
+
+### Clipboard Access
+
+This plugin requests `clipboard-read` and `clipboard-write` permissions exclusively for **user-initiated copy operations**:
+
+**When clipboard is accessed:**
+
+- Right-click any rendered diagram → **Copy local server start command**: Copies the Java command to start the PlantUML server
+- Settings screen → **Local server start command** field → Right-click → **Copy**: Copies the auto-generated start command
+- Settings screen → **Copy login startup command**: Copies the platform-specific command to register the server for auto-start
+- Settings screen → **Copy login startup unregister command**: Copies the command to remove auto-start registration
+- Settings screen → **Copy local server stop command**: Copies the command to stop the PlantUML server
+
+**Important:**
+
+- Clipboard is never accessed automatically or in the background
+- Access only occurs when the user explicitly clicks a "Copy" button or menu item
+- No data is read from or written to the clipboard except the commands specified above
+
 ## Build
 
 1. Install dependencies:
@@ -213,14 +233,98 @@ npm run lint:fix
 1. Verify `manifest.json` fields: `id`, `name`, `author`, `description`, and `version`.
 2. Run `npm run lint:fix`.
 3. Run `npm run lint`.
-4. Run `npm run version:patch` for fix releases. This command updates `package.json`, `package-lock.json`, `manifest.json`, and `versions.json` together.
-5. Run `npm run build` to generate `main.js`.
-6. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
-7. Attach the following 3 files as release assets:
-    - `manifest.json`
-    - `main.js`
-    - `styles.css`
-8. Submit a registration PR to the Obsidian community plugin list repository.
+4. Run `npm run verify:release` to verify all release requirements are met.
+5. Bump the version based on the type of release:
+   - **For bug fixes (patch):** `npm run version:patch` (e.g., `0.1.12` → `0.1.13`)
+   - **For new features (minor):** `npm run version:minor` (e.g., `0.1.12` → `0.2.0`)
+   - **For breaking changes (major):** `npm run version:major` (e.g., `0.1.12` → `1.0.0`)
+
+   This updates `package.json`, `manifest.json`, and `versions.json` together.
+
+6. Run `npm run build` to generate `main.js`.
+7. Create a GitHub Release with the same tag as the `manifest.json` version (for example, `0.1.0`).
+8. The GitHub Actions workflow automatically:
+
+   - Generates release notes from git commits since the previous tag
+   - Creates artifact attestations for `main.js` and `styles.css` to establish provenance
+   - Verifies all release requirements (manifest fields, permissions, assets)
+   - Attaches release notes and attestations to the GitHub Release
+
+9. Attach the following 3 files as release assets:
+
+   - `manifest.json`
+   - `main.js`
+   - `styles.css`
+
+10. Submit a registration PR to the Obsidian community plugin list repository.
+
+### Release Verification
+
+Run the release verification script locally:
+
+```sh
+npm run verify:release
+```
+
+This checks:
+
+- `manifest.json` contains all required fields
+- Clipboard access permissions are declared (`clipboard-read`, `clipboard-write`)
+- Release assets exist after building
+
+### Artifact Attestations
+
+Each GitHub Release includes artifact attestations for `main.js` and `styles.css`. These attestations cryptographically verify the provenance of the release assets, proving they were built from the source repository.
+
+**Verifying attestations:**
+
+Users can verify the authenticity and provenance of release assets using the GitHub CLI:
+
+```sh
+gh attestation verify <artifact-file> --owner fangface-hub --repo obsidian_plantuml_integrator
+```
+
+Learn more: [Using artifact attestations to establish provenance for builds](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds)
+
+## Version Management
+
+This project follows [Semantic Versioning](https://semver.org/) (MAJOR.MINOR.PATCH).
+
+### Version Bump Commands
+
+- **Major version bump** (breaking changes):
+
+  ```sh
+  npm run version:major
+  ```
+
+  Bumps major version and resets minor and patch to 0 (e.g., `0.1.12` → `1.0.0`)
+
+- **Minor version bump** (new features):
+
+  ```sh
+  npm run version:minor
+  ```
+
+  Bumps minor version and resets patch to 0 (e.g., `0.1.12` → `0.2.0`)
+
+- **Patch version bump** (bug fixes):
+
+  ```sh
+  npm run version:patch
+  ```
+
+  Bumps patch version only (e.g., `0.1.12` → `0.1.13`)
+
+### What the version commands do
+
+Each version bump command automatically updates:
+
+- `package.json` - Package version
+- `manifest.json` - Plugin manifest version
+- `versions.json` - Version history with minimum Obsidian version
+
+When bumping major or minor versions, lower version numbers reset to 0 per semantic versioning standards.
 
 ## GitHub Actions (Release ZIP)
 
