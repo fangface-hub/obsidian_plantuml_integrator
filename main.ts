@@ -17,9 +17,11 @@ import {
 import * as plantumlEncoder from "plantuml-encoder";
 
 type RenderMode = "server" | "localJar";
+type DiagramAlignment = "left" | "center" | "right";
 
 interface PlantumlIntegratorSettings {
   renderMode: RenderMode;
+  diagramAlignment: DiagramAlignment;
   serverUrl: string;
   localServerUrl: string;
   localJarPath: string;
@@ -29,6 +31,7 @@ interface PlantumlIntegratorSettings {
 
 const DEFAULT_SETTINGS: PlantumlIntegratorSettings = {
   renderMode: "server",
+  diagramAlignment: "left",
   serverUrl: "https://kroki.io/plantuml/svg",
   localServerUrl: "http://127.0.0.1:8080/svg",
   localJarPath: "",
@@ -107,7 +110,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       try {
         const expandResult = await this.expandPlantumlSource(source, rootPath, blockKey);
         const svg = await this.renderSvg(expandResult.expandedSource);
-        this.renderSvgIntoContainer(container, svg);
+        this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source));
 
         this.renderBindings.set(bindingId, {
           id: bindingId,
@@ -172,7 +175,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
           const source = await this.app.vault.cachedRead(file);
           const expandResult = await this.expandPlantumlSource(source, file.path, cacheKey);
           const svg = await this.renderSvg(expandResult.expandedSource);
-          this.renderSvgIntoContainer(container, svg);
+          this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source));
 
           const deps = new Set(expandResult.dependencies);
           deps.add(file.path);
@@ -493,8 +496,14 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     }
   }
 
-  private renderSvgIntoContainer(container: HTMLElement, svg: string): void {
+  private getDiagramAlignment(source: string): DiagramAlignment {
+    const directive = /^\s*'\s*@?horizontal-align\s*:\s*(left|center|right)\s*$/im.exec(source);
+    return directive ? directive[1] as DiagramAlignment : this.settings.diagramAlignment;
+  }
+
+  private renderSvgIntoContainer(container: HTMLElement, svg: string, alignment: DiagramAlignment): void {
     container.empty();
+    container.dataset.plantumlAlign = alignment;
     const parser = new DOMParser();
     const doc = parser.parseFromString(svg, "image/svg+xml");
     const parseError = doc.querySelector("parsererror");
@@ -725,6 +734,10 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
     return [];
   }
 
+  private normalizeDiagramAlignment(value: string): DiagramAlignment {
+    return value === "center" || value === "right" ? value : "left";
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
@@ -788,6 +801,21 @@ class PlantumlIntegratorSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.renderMode)
           .onChange(async (value: string) => {
             this.plugin.settings.renderMode = value === "localJar" ? "localJar" : "server";
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Default diagram alignment")
+      .setDesc("Choose where diagrams are placed inside the rendering area.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("left", "Left")
+          .addOption("center", "Center")
+          .addOption("right", "Right")
+          .setValue(this.plugin.settings.diagramAlignment)
+          .onChange(async (value: string) => {
+            this.plugin.settings.diagramAlignment = this.normalizeDiagramAlignment(value);
             await this.plugin.saveSettings();
           });
       });

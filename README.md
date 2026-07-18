@@ -9,6 +9,7 @@ An Obsidian plugin that renders PlantUML diagrams and is ready for Community Plu
 - Cache include dependency trees and auto re-render when included files are modified.
 - Right-click each rendered diagram to clear cache and re-render only that diagram.
 - Select rendering mode: remote server endpoint or local PlantUML server.
+- Align rendered diagrams left, center, or right, with optional per-diagram overrides.
 
 ### Code block rendering image
 
@@ -154,6 +155,7 @@ Replace the Java executable and JAR path with values that match your environment
 | Setting | Description | Default |
 | --- | --- | --- |
 | Render mode | Choose where plantuml rendering is processed. | `Server` |
+| Default diagram alignment | Places rendered diagrams inside the rendering area. | `Left` |
 | Plantuml server URL | Used when render mode is server. Kroki endpoint is recommended. | `https://kroki.io/plantuml/svg` |
 | Local plantuml server URL | Used when render mode is local JAR. Example: `http://127.0.0.1:8080/svg` | `http://127.0.0.1:8080/svg` |
 | Path to the local plantuml jar | Used to build the local server start command. | *(empty)* |
@@ -165,6 +167,30 @@ Replace the Java executable and JAR path with values that match your environment
 | Login startup unregister command | Displayed command for unregistering local server startup at login. | Platform-specific auto-generated value |
 
 **Convenience feature:** Right-click any rendered diagram and select **Copy local server start command** to copy the `javaw.exe -jar ...` command to the clipboard.
+
+**Per-diagram alignment:** Add a PlantUML comment to override the default horizontal alignment for one diagram. PlantUML ignores the comment, and other Markdown rendering tools can reuse the same `horizontal-align` metadata.
+
+Recommended placement:
+
+```plantuml
+' horizontal-align: center
+@startuml
+Alice -> Bob: Hello
+@enduml
+```
+
+The metadata comment does not have to be the first line. It can appear before or after `@startuml`; the plugin scans the whole PlantUML source for a standalone `horizontal-align` comment line. For readability, placing it near the top of the diagram is recommended.
+
+This is also valid:
+
+```plantuml
+@startuml
+' horizontal-align: center
+Alice -> Bob: Hello
+@enduml
+```
+
+Supported values are `left`, `center`, and `right`.
 
 If the server is not running, the plugin shows the start command in the error message.
 

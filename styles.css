@@ -13,6 +13,18 @@
   display: block;
 }
 
+.plantuml-integrator-container[data-plantuml-align="left"] svg {
+  margin-inline: 0 auto;
+}
+
+.plantuml-integrator-container[data-plantuml-align="center"] svg {
+  margin-inline: auto;
+}
+
+.plantuml-integrator-container[data-plantuml-align="right"] svg {
+  margin-inline: auto 0;
+}
+
 .plantuml-integrator-error {
   color: var(--text-error);
   white-space: pre-wrap;
