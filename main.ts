@@ -77,6 +77,8 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
+    this.registerExtensions(["puml"], "markdown");
+
     this.registerMarkdownCodeBlockProcessor("plantuml", async (source, el, ctx) => {
       await this.renderPlantumlCodeBlock(source, el, ctx, "plantuml");
     });
@@ -86,6 +88,11 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     });
 
     this.registerMarkdownPostProcessor(async (el, ctx) => {
+      const renderedStandalone = await this.renderStandalonePumlDocument(el, ctx);
+      if (renderedStandalone) {
+        return;
+      }
+
       await this.renderPumlEmbeds(el, ctx);
     });
 
@@ -227,6 +234,81 @@ export default class PlantumlIntegratorPlugin extends Plugin {
         })(container, this, bindingId)
       );
     }
+  }
+
+  private async renderStandalonePumlDocument(
+    el: HTMLElement,
+    ctx: MarkdownPostProcessorContext
+  ): Promise<boolean> {
+    const sourcePath = ctx.sourcePath;
+    if (!sourcePath.toLowerCase().endsWith(".puml")) {
+      return false;
+    }
+
+    const file = this.app.vault.getAbstractFileByPath(sourcePath);
+    if (!(file instanceof TFile)) {
+      return false;
+    }
+
+    const sectionInfo = ctx.getSectionInfo(el);
+    if (sectionInfo && sectionInfo.lineStart > 0) {
+      el.empty();
+      return true;
+    }
+
+    el.empty();
+    const container = el.createDiv({ cls: "plantuml-integrator-container" });
+    const cacheKey = `file::${file.path}`;
+    const bindingId = `${cacheKey}::${Date.now()}::${Math.random().toString(36).slice(2)}`;
+
+    const render = async (): Promise<void> => {
+      container.empty();
+      try {
+        const source = await this.app.vault.cachedRead(file);
+        const expandResult = await this.expandPlantumlSource(source, file.path, cacheKey);
+        const metadata = this.extractDiagramMetadata(source);
+        const svg = await this.renderSvg(expandResult.expandedSource);
+        this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source, metadata), metadata);
+
+        const deps = new Set(expandResult.dependencies);
+        deps.add(file.path);
+
+        this.renderBindings.set(bindingId, {
+          id: bindingId,
+          rootPath: file.path,
+          cacheKey,
+          dependencies: deps,
+          render
+        });
+      } catch (error) {
+        container.createDiv({
+          cls: "plantuml-integrator-error",
+          text: this.buildRenderErrorMessage(error)
+        });
+      }
+    };
+
+    this.attachContextMenu(container, bindingId);
+    await render();
+
+    ctx.addChild(
+      new (class extends MarkdownRenderChild {
+        plugin: PlantumlIntegratorPlugin;
+        id: string;
+
+        constructor(containerEl: HTMLElement, plugin: PlantumlIntegratorPlugin, id: string) {
+          super(containerEl);
+          this.plugin = plugin;
+          this.id = id;
+        }
+
+        onunload(): void {
+          this.plugin.renderBindings.delete(this.id);
+        }
+      })(container, this, bindingId)
+    );
+
+    return true;
   }
 
   private async onFileModified(file: TAbstractFile): Promise<void> {
@@ -611,10 +693,12 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       throw new Error("PlantUML response is not valid SVG.");
     }
 
-    const svgElement = doc.documentElement;
-    if (!svgElement || svgElement.tagName.toLowerCase() !== "svg") {
+    const rootElement = doc.documentElement;
+    if (!rootElement || rootElement.tagName.toLowerCase() !== "svg") {
       throw new Error("PlantUML response does not contain an SVG root element.");
     }
+
+    const svgElement = rootElement as unknown as SVGElement;
 
     this.applyDiagramMetadata(container, svgElement, metadata);
 
