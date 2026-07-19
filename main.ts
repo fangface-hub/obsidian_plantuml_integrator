@@ -1,18 +1,19 @@
 import {
-  App,
-  ButtonComponent,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Platform,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  TextAreaComponent,
-  requestUrl
+    App,
+    ButtonComponent,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Platform,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    TFolder,
+    TextAreaComponent,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -99,6 +100,12 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     this.registerEvent(
       this.app.vault.on("modify", async (file) => {
         await this.onFileModified(file);
+      })
+    );
+
+    this.registerEvent(
+      this.app.workspace.on("file-menu", (menu, file) => {
+        this.addNewPumlMenuItem(menu, file);
       })
     );
 
@@ -332,6 +339,51 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     }
 
     await Promise.all(rerenders);
+  }
+
+  private addNewPumlMenuItem(menu: Menu, file: TAbstractFile): void {
+    menu.addItem((item) => {
+      item
+        .setTitle("New puml")
+        .setIcon("file-plus")
+        .setSection("action")
+        .onClick(async () => {
+          await this.createPumlFileFromMenu(file);
+        });
+    });
+  }
+
+  private async createPumlFileFromMenu(target: TAbstractFile): Promise<void> {
+    try {
+      const folder = this.getPumlCreationFolder(target);
+      const file = await this.app.vault.create(this.getAvailablePumlPath(folder), "@startuml\n\n@enduml\n");
+      await this.app.workspace.getLeaf(false).openFile(file);
+    } catch (error) {
+      new Notice(`Failed to create puml file: ${this.errorToMessage(error)}`);
+    }
+  }
+
+  private getPumlCreationFolder(target: TAbstractFile): TFolder {
+    if (target instanceof TFolder) {
+      return target;
+    }
+
+    return target.parent ?? this.app.vault.getRoot();
+  }
+
+  private getAvailablePumlPath(folder: TFolder): string {
+    const folderPath = folder.path;
+    const basePath = folderPath ? `${folderPath}/` : "";
+
+    let index = 0;
+    while (true) {
+      const name = index === 0 ? "Untitled.puml" : `Untitled ${index}.puml`;
+      const path = `${basePath}${name}`;
+      if (!this.app.vault.getAbstractFileByPath(path)) {
+        return path;
+      }
+      index += 1;
+    }
   }
 
   private resolveContextPath(sourcePath: string): string | null {
