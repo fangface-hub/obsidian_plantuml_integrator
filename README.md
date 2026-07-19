@@ -192,6 +192,40 @@ Alice -> Bob: Hello
 
 Supported values are `left`, `center`, and `right`.
 
+**Per-diagram HTML metadata (`@meta`):** You can also add a PlantUML block comment with `@meta` and `data-*` keys.
+
+Example:
+
+```plantuml
+/'
+   @meta
+   data-align="center"
+   data-width="80%"
+   data-theme="dark"
+'/
+@startuml
+Alice -> Bob: Hello
+@enduml
+```
+
+Supported metadata:
+
+| Metadata | Meaning | Example |
+| --- | --- | --- |
+| **data-align** | Horizontal alignment override for SVG placement. | `"left"`, `"center"`, `"right"` |
+| **data-width** | SVG width inside the container. When specified, responsive `max-width: 100%` is disabled for that diagram. | `"80%"`, `"600px"`, `"original"` |
+| **data-margin** | Outer margin for the diagram container. | `"12px"` |
+| **data-background** | Background color for the diagram container. | `"#fff"` |
+| **data-zoom** | Diagram zoom scale. | `"1.2"` |
+| **data-interactive** | Adds `data-interactive` attribute to the rendered container. | `"true"` |
+| **data-theme** | Adds `data-theme` attribute to the rendered container. | `"dark"` |
+
+Notes:
+
+- `data-align` takes precedence over `horizontal-align` when both are present.
+- `data-width="original"` keeps the SVG at its original size.
+- `data-theme` and `data-interactive` are exposed as HTML `data-*` attributes so you can style or script them.
+
 If the server is not running, the plugin shows the start command in the error message.
 
 ## Security and Permissions

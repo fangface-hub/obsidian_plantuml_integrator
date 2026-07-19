@@ -1,16 +1,19 @@
 .plantuml-integrator-container {
-  margin: 0.75rem 0;
+  margin: var(--plantuml-container-margin, 0.75rem 0);
   padding: 0.5rem;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
-  background: var(--background-secondary);
+  background: var(--plantuml-container-background, var(--background-secondary));
   overflow-x: auto;
 }
 
 .plantuml-integrator-container svg {
-  max-width: 100%;
+  width: var(--plantuml-svg-width, auto);
+  max-width: var(--plantuml-svg-max-width, 100%);
   height: auto;
   display: block;
+  transform-origin: var(--plantuml-svg-transform-origin, initial);
+  transform: var(--plantuml-svg-transform, none);
 }
 
 .plantuml-integrator-container[data-plantuml-align="left"] svg {

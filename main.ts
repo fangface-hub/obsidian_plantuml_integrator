@@ -1,23 +1,33 @@
 import {
-    App,
-    ButtonComponent,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Menu,
-    Notice,
-    Platform,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TAbstractFile,
-    TFile,
-    TextAreaComponent,
-    requestUrl
+  App,
+  ButtonComponent,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+  Menu,
+  Notice,
+  Platform,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+  TAbstractFile,
+  TFile,
+  TextAreaComponent,
+  requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
 type RenderMode = "server" | "localJar";
 type DiagramAlignment = "left" | "center" | "right";
+
+interface DiagramMetadata {
+  dataAlign?: string;
+  dataWidth?: string;
+  dataMargin?: string;
+  dataBackground?: string;
+  dataZoom?: string;
+  dataTheme?: string;
+  dataInteractive?: string;
+}
 
 interface PlantumlIntegratorSettings {
   renderMode: RenderMode;
@@ -109,8 +119,9 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       container.empty();
       try {
         const expandResult = await this.expandPlantumlSource(source, rootPath, blockKey);
+        const metadata = this.extractDiagramMetadata(source);
         const svg = await this.renderSvg(expandResult.expandedSource);
-        this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source));
+        this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source, metadata), metadata);
 
         this.renderBindings.set(bindingId, {
           id: bindingId,
@@ -174,8 +185,9 @@ export default class PlantumlIntegratorPlugin extends Plugin {
         try {
           const source = await this.app.vault.cachedRead(file);
           const expandResult = await this.expandPlantumlSource(source, file.path, cacheKey);
+          const metadata = this.extractDiagramMetadata(source);
           const svg = await this.renderSvg(expandResult.expandedSource);
-          this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source));
+          this.renderSvgIntoContainer(container, svg, this.getDiagramAlignment(source, metadata), metadata);
 
           const deps = new Set(expandResult.dependencies);
           deps.add(file.path);
@@ -496,12 +508,100 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     }
   }
 
-  private getDiagramAlignment(source: string): DiagramAlignment {
+  private extractDiagramMetadata(source: string): DiagramMetadata {
+    const metadata: DiagramMetadata = {};
+    const metaBlockPattern = /\/'([\s\S]*?)'\//gm;
+    let blockMatch: RegExpExecArray | null;
+
+    while ((blockMatch = metaBlockPattern.exec(source)) !== null) {
+      const block = blockMatch[1] ?? "";
+      const lines = block
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      if (!lines.some((line) => /^@meta$/i.test(line))) {
+        continue;
+      }
+
+      for (const line of lines) {
+        if (/^@meta$/i.test(line)) {
+          continue;
+        }
+
+        const pair = /^([a-z][a-z0-9-]*)\s*=\s*(.+)$/i.exec(line);
+        if (!pair) {
+          continue;
+        }
+
+        const key = pair[1].toLowerCase();
+        const rawValue = pair[2].trim();
+        const value = this.stripMetadataQuotes(rawValue);
+        if (!value) {
+          continue;
+        }
+
+        if (key === "data-align") {
+          metadata.dataAlign = value;
+        } else if (key === "data-width") {
+          metadata.dataWidth = value;
+        } else if (key === "data-margin") {
+          metadata.dataMargin = value;
+        } else if (key === "data-background") {
+          metadata.dataBackground = value;
+        } else if (key === "data-zoom") {
+          metadata.dataZoom = value;
+        } else if (key === "data-theme") {
+          metadata.dataTheme = value;
+        } else if (key === "data-interactive") {
+          metadata.dataInteractive = value;
+        }
+      }
+    }
+
+    return metadata;
+  }
+
+  private stripMetadataQuotes(value: string): string {
+    const trimmed = value.trim();
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      return trimmed.slice(1, -1).trim();
+    }
+    return trimmed;
+  }
+
+  private normalizeDiagramAlignment(value: string | undefined): DiagramAlignment | null {
+    if (!value) {
+      return null;
+    }
+
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "left" || normalized === "center" || normalized === "right") {
+      return normalized;
+    }
+
+    return null;
+  }
+
+  private getDiagramAlignment(source: string, metadata: DiagramMetadata): DiagramAlignment {
+    const metadataAlignment = this.normalizeDiagramAlignment(metadata.dataAlign);
+    if (metadataAlignment) {
+      return metadataAlignment;
+    }
+
     const directive = /^\s*'\s*@?horizontal-align\s*:\s*(left|center|right)\s*$/im.exec(source);
     return directive ? directive[1] as DiagramAlignment : this.settings.diagramAlignment;
   }
 
-  private renderSvgIntoContainer(container: HTMLElement, svg: string, alignment: DiagramAlignment): void {
+  private renderSvgIntoContainer(
+    container: HTMLElement,
+    svg: string,
+    alignment: DiagramAlignment,
+    metadata: DiagramMetadata
+  ): void {
     container.empty();
     container.dataset.plantumlAlign = alignment;
     const parser = new DOMParser();
@@ -516,7 +616,103 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       throw new Error("PlantUML response does not contain an SVG root element.");
     }
 
+    this.applyDiagramMetadata(container, svgElement, metadata);
+
     container.appendChild(svgElement);
+  }
+
+  private applyDiagramMetadata(container: HTMLElement, svgElement: SVGElement, metadata: DiagramMetadata): void {
+    container.setCssProps({
+      "--plantuml-container-margin": "",
+      "--plantuml-container-background": "",
+      "--plantuml-svg-width": "",
+      "--plantuml-svg-max-width": "",
+      "--plantuml-svg-transform-origin": "",
+      "--plantuml-svg-transform": ""
+    });
+
+    if (metadata.dataAlign) {
+      container.dataset.align = metadata.dataAlign;
+    }
+
+    if (metadata.dataWidth) {
+      container.dataset.width = metadata.dataWidth;
+      if (metadata.dataWidth.toLowerCase() === "original") {
+        container.setCssProps({
+          "--plantuml-svg-width": "auto",
+          "--plantuml-svg-max-width": "none"
+        });
+      } else {
+        this.applySvgWidthOverride(svgElement, metadata.dataWidth);
+        container.setCssProps({
+          "--plantuml-svg-width": metadata.dataWidth,
+          "--plantuml-svg-max-width": "none"
+        });
+      }
+    }
+
+    if (metadata.dataMargin) {
+      container.dataset.margin = metadata.dataMargin;
+      container.setCssProps({ "--plantuml-container-margin": metadata.dataMargin });
+    }
+
+    if (metadata.dataBackground) {
+      container.dataset.background = metadata.dataBackground;
+      container.setCssProps({ "--plantuml-container-background": metadata.dataBackground });
+    }
+
+    if (metadata.dataZoom) {
+      container.dataset.zoom = metadata.dataZoom;
+      const zoom = Number(metadata.dataZoom);
+      if (Number.isFinite(zoom) && zoom > 0) {
+        container.setCssProps({
+          "--plantuml-svg-transform-origin": "top left",
+          "--plantuml-svg-transform": `scale(${zoom})`
+        });
+      }
+    }
+
+    if (metadata.dataTheme) {
+      container.dataset.theme = metadata.dataTheme;
+    }
+
+    if (metadata.dataInteractive) {
+      container.dataset.interactive = metadata.dataInteractive;
+    }
+  }
+
+  private applySvgWidthOverride(svgElement: SVGElement, width: string): void {
+    this.removeSvgRootStyleProperties(svgElement, new Set(["width", "height", "max-width"]));
+    svgElement.removeAttribute("height");
+    svgElement.setAttribute("width", width);
+  }
+
+  private removeSvgRootStyleProperties(svgElement: SVGElement, properties: Set<string>): void {
+    const styleText = svgElement.getAttribute("style");
+    if (!styleText) {
+      return;
+    }
+
+    const kept = styleText
+      .split(";")
+      .map((decl) => decl.trim())
+      .filter((decl) => decl.length > 0)
+      .filter((decl) => {
+        const colonIndex = decl.indexOf(":");
+        if (colonIndex < 0) {
+          return true;
+        }
+
+        const name = decl.slice(0, colonIndex).trim().toLowerCase();
+        return !properties.has(name);
+      });
+
+    if (kept.length === 0) {
+      svgElement.removeAttribute("style");
+      return;
+    }
+
+    svgElement.setAttribute("style", `${kept.join(";")};`);
   }
 
   private attachContextMenu(container: HTMLElement, bindingId: string): void {
