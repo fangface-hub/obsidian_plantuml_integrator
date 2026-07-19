@@ -1,5 +1,6 @@
 .plantuml-integrator-container {
   margin: var(--plantuml-container-margin, 0.75rem 0);
+  min-height: var(--plantuml-preserved-min-height, 0);
   padding: 0.5rem;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;

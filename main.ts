@@ -1,32 +1,32 @@
 import {
-  acceptCompletion,
-  autocompletion,
-  completionStatus,
-  startCompletion,
-  type Completion,
-  type CompletionContext,
-  type CompletionResult,
-  type CompletionSource
+    acceptCompletion,
+    autocompletion,
+    completionStatus,
+    startCompletion,
+    type Completion,
+    type CompletionContext,
+    type CompletionResult,
+    type CompletionSource
 } from "@codemirror/autocomplete";
 import { EditorState, Prec, type Extension } from "@codemirror/state";
 import { keymap, type EditorView } from "@codemirror/view";
 import {
-  App,
-  ButtonComponent,
-  MarkdownPostProcessorContext,
-  MarkdownRenderChild,
-  Menu,
-  Notice,
-  Platform,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TAbstractFile,
-  TFile,
-  TFolder,
-  TextAreaComponent,
-  editorInfoField,
-  requestUrl
+    App,
+    ButtonComponent,
+    MarkdownPostProcessorContext,
+    MarkdownRenderChild,
+    Menu,
+    Notice,
+    Platform,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    TAbstractFile,
+    TFile,
+    TFolder,
+    TextAreaComponent,
+    editorInfoField,
+    requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -285,7 +285,6 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     const bindingId = `${blockKey}::${Date.now()}::${Math.random().toString(36).slice(2)}`;
 
     const render = async (): Promise<void> => {
-      container.empty();
       try {
         const expandResult = await this.expandPlantumlSource(source, rootPath, blockKey);
         const metadata = this.extractDiagramMetadata(source);
@@ -300,10 +299,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
           render
         });
       } catch (error) {
-        container.createDiv({
-          cls: "plantuml-integrator-error",
-          text: this.buildRenderErrorMessage(error)
-        });
+        this.renderErrorIntoContainer(container, error);
       }
     };
 
@@ -350,7 +346,6 @@ export default class PlantumlIntegratorPlugin extends Plugin {
       const bindingId = `${cacheKey}::${Date.now()}::${Math.random().toString(36).slice(2)}`;
 
       const render = async (): Promise<void> => {
-        container.empty();
         try {
           const source = await this.app.vault.cachedRead(file);
           const expandResult = await this.expandPlantumlSource(source, file.path, cacheKey);
@@ -369,10 +364,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
             render
           });
         } catch (error) {
-          container.createDiv({
-            cls: "plantuml-integrator-error",
-            text: this.buildRenderErrorMessage(error)
-          });
+          this.renderErrorIntoContainer(container, error);
         }
       };
 
@@ -424,7 +416,6 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     const bindingId = `${cacheKey}::${Date.now()}::${Math.random().toString(36).slice(2)}`;
 
     const render = async (): Promise<void> => {
-      container.empty();
       try {
         const source = await this.app.vault.cachedRead(file);
         const expandResult = await this.expandPlantumlSource(source, file.path, cacheKey);
@@ -443,10 +434,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
           render
         });
       } catch (error) {
-        container.createDiv({
-          cls: "plantuml-integrator-error",
-          text: this.buildRenderErrorMessage(error)
-        });
+        this.renderErrorIntoContainer(container, error);
       }
     };
 
@@ -891,7 +879,6 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     alignment: DiagramAlignment,
     metadata: DiagramMetadata
   ): void {
-    container.empty();
     container.dataset.plantumlAlign = alignment;
     const parser = new DOMParser();
     const doc = parser.parseFromString(svg, "image/svg+xml");
@@ -909,7 +896,33 @@ export default class PlantumlIntegratorPlugin extends Plugin {
 
     this.applyDiagramMetadata(container, svgElement, metadata);
 
-    container.appendChild(svgElement);
+    this.replaceContainerContent(container, svgElement);
+  }
+
+  private renderErrorIntoContainer(container: HTMLElement, error: unknown): void {
+    const errorElement = createDiv({
+      cls: "plantuml-integrator-error",
+      text: this.buildRenderErrorMessage(error)
+    });
+
+    this.replaceContainerContent(container, errorElement);
+  }
+
+  private replaceContainerContent(container: HTMLElement, child: HTMLElement | SVGElement): void {
+    const previousHeight = container.offsetHeight;
+
+    if (previousHeight > 0) {
+      container.setCssProps({ "--plantuml-preserved-min-height": `${previousHeight}px` });
+    }
+
+    container.empty();
+    container.appendChild(child);
+
+    if (previousHeight > 0) {
+      window.requestAnimationFrame(() => {
+        container.setCssProps({ "--plantuml-preserved-min-height": "" });
+      });
+    }
   }
 
   private applyDiagramMetadata(container: HTMLElement, svgElement: SVGElement, metadata: DiagramMetadata): void {
