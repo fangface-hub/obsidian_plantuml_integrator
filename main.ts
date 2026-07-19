@@ -1,19 +1,32 @@
 import {
-    App,
-    ButtonComponent,
-    MarkdownPostProcessorContext,
-    MarkdownRenderChild,
-    Menu,
-    Notice,
-    Platform,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TAbstractFile,
-    TFile,
-    TFolder,
-    TextAreaComponent,
-    requestUrl
+  acceptCompletion,
+  autocompletion,
+  completionStatus,
+  startCompletion,
+  type Completion,
+  type CompletionContext,
+  type CompletionResult,
+  type CompletionSource
+} from "@codemirror/autocomplete";
+import { EditorState, Prec, type Extension } from "@codemirror/state";
+import { keymap, type EditorView } from "@codemirror/view";
+import {
+  App,
+  ButtonComponent,
+  MarkdownPostProcessorContext,
+  MarkdownRenderChild,
+  Menu,
+  Notice,
+  Platform,
+  Plugin,
+  PluginSettingTab,
+  Setting,
+  TAbstractFile,
+  TFile,
+  TFolder,
+  TextAreaComponent,
+  editorInfoField,
+  requestUrl
 } from "obsidian";
 import * as plantumlEncoder from "plantuml-encoder";
 
@@ -50,6 +63,57 @@ const DEFAULT_SETTINGS: PlantumlIntegratorSettings = {
   timeoutMs: 10000
 };
 
+const PLANTUML_COMPLETIONS: readonly Completion[] = [
+  "@startuml",
+  "@enduml",
+  "@startmindmap",
+  "@endmindmap",
+  "@startjson",
+  "@endjson",
+  "@startyaml",
+  "@endyaml",
+  "@startsalt",
+  "@endsalt",
+  "@startgantt",
+  "@endgantt",
+  "@startwbs",
+  "@endwbs",
+  "@startditaa",
+  "@endditaa",
+  "!include",
+  "!include_once",
+  "!include_many",
+  "!theme",
+  "actor",
+  "annotation",
+  "abstract",
+  "boundary",
+  "class",
+  "cloud",
+  "collections",
+  "component",
+  "control",
+  "database",
+  "entity",
+  "enum",
+  "folder",
+  "frame",
+  "interface",
+  "namespace",
+  "node",
+  "object",
+  "package",
+  "participant",
+  "queue",
+  "rectangle",
+  "skinparam",
+  "stack",
+  "title"
+].map((label) => ({ label, type: "keyword" }));
+
+const PLANTUML_COMPLETION_PREFIX = /[@!]?[A-Za-z_][A-Za-z0-9_]*$/;
+const PLANTUML_COMPLETION_VALID_FOR = /^[@!]?[A-Za-z_][A-Za-z0-9_]*$/;
+
 interface IncludeCacheEntry {
   versionKey: string;
   expandedSource: string;
@@ -79,6 +143,7 @@ export default class PlantumlIntegratorPlugin extends Plugin {
     await this.loadSettings();
 
     this.registerExtensions(["puml"], "markdown");
+    this.registerEditorExtension(this.buildPlantumlCompletionExtension());
 
     this.registerMarkdownCodeBlockProcessor("plantuml", async (source, el, ctx) => {
       await this.renderPlantumlCodeBlock(source, el, ctx, "plantuml");
@@ -115,6 +180,96 @@ export default class PlantumlIntegratorPlugin extends Plugin {
   onunload(): void {
     this.renderBindings.clear();
     this.includeCache.clear();
+  }
+
+  private buildPlantumlCompletionExtension(): Extension {
+    const completionSource: CompletionSource = (context) => this.getPlantumlCompletions(context);
+
+    return [
+      EditorState.languageData.of((state, pos) => {
+        if (!this.isPlantumlCompletionContext(state, pos)) {
+          return [];
+        }
+
+        return [{ autocomplete: completionSource }];
+      }),
+      autocompletion({ activateOnTyping: true }),
+      Prec.highest(keymap.of([
+        {
+          key: "Tab",
+          run: (view) => this.completeOrStartPlantumlCompletion(view)
+        }
+      ]))
+    ];
+  }
+
+  private getPlantumlCompletions(context: CompletionContext): CompletionResult | null {
+    if (!this.isPlantumlCompletionContext(context.state, context.pos)) {
+      return null;
+    }
+
+    const prefix = context.matchBefore(PLANTUML_COMPLETION_PREFIX);
+    if (!prefix) {
+      return context.explicit
+        ? {
+          from: context.pos,
+          options: PLANTUML_COMPLETIONS,
+          validFor: PLANTUML_COMPLETION_VALID_FOR
+        }
+        : null;
+    }
+
+    return {
+      from: prefix.from,
+      to: prefix.to,
+      options: PLANTUML_COMPLETIONS,
+      validFor: PLANTUML_COMPLETION_VALID_FOR
+    };
+  }
+
+  private completeOrStartPlantumlCompletion(view: EditorView): boolean {
+    if (completionStatus(view.state) === "active") {
+      return acceptCompletion(view);
+    }
+
+    const selection = view.state.selection.main;
+    if (!selection.empty || !this.isPlantumlCompletionContext(view.state, selection.from)) {
+      return false;
+    }
+
+    const line = view.state.doc.lineAt(selection.from);
+    const prefix = PLANTUML_COMPLETION_PREFIX.exec(line.text.slice(0, selection.from - line.from));
+    if (!prefix) {
+      return false;
+    }
+
+    return startCompletion(view);
+  }
+
+  private isPlantumlCompletionContext(state: EditorState, pos: number): boolean {
+    const info = state.field(editorInfoField, false);
+    if (info?.file?.extension.toLowerCase() === "puml") {
+      return true;
+    }
+
+    return this.isInsidePlantumlCodeBlock(state, pos);
+  }
+
+  private isInsidePlantumlCodeBlock(state: EditorState, pos: number): boolean {
+    let lineNumber = state.doc.lineAt(pos).number;
+
+    while (lineNumber >= 1) {
+      const line = state.doc.line(lineNumber).text;
+      const fence = /^\s*(```+|~~~+)\s*(\S*)/.exec(line);
+      if (fence) {
+        const language = (fence[2] ?? "").toLowerCase();
+        return language === "plantuml" || language === "puml";
+      }
+
+      lineNumber -= 1;
+    }
+
+    return false;
   }
 
   private async renderPlantumlCodeBlock(
